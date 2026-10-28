@@ -85,6 +85,10 @@ td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: to
 td small { display: block; color: var(--muted); }
 .tag { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: .72rem; background: var(--accent-soft); }
 .tag.on { background: var(--ok); color: var(--bg); }
+.tag.bad { background: var(--danger); color: var(--bg); }
+.mini { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 10px; cursor: pointer; font-size: .8rem; }
+.sechead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.sechead h2 { margin: 0; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -133,6 +137,17 @@ td small { display: block; color: var(--muted); }
   </div>
 
   <div class="grid3" id="breakdowns"></div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="sechead"><h2>Seguridad: intentos de acceso</h2><button class="mini" id="unbanAll" type="button" hidden>Desbloquear todos</button></div>
+    <div class="tablewrap">
+      <table style="min-width:640px">
+        <thead><tr><th>Estado</th><th>Lugar</th><th>Dispositivo</th><th>Último intento</th><th></th></tr></thead>
+        <tbody id="bans"></tbody>
+      </table>
+    </div>
+    <p class="note">Tras 4 claves incorrectas seguidas, esa conexión queda bloqueada hasta que la desbloquees aquí. Solo afecta al panel, no a la web.</p>
+  </div>
 
   <div class="card">
     <h2>Últimas sesiones</h2>
@@ -193,7 +208,7 @@ td small { display: block; color: var(--muted); }
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, d: d }; });
     }).then(function (x) {
-      if (x.status === 401) { setTok(""); return showLogin("Clave incorrecta."); }
+      if (x.status === 401 || x.status === 403) { setTok(""); return showLogin(x.d.error || "Clave incorrecta."); }
       if (!x.ok) {
         var msg = x.d.error || ("Error " + x.status);
         if (!$("app").hidden) $("appErr").textContent = msg + (x.d.detail ? ": " + x.d.detail : "");
@@ -271,6 +286,8 @@ td small { display: block; color: var(--muted); }
     rank(b, "Modelo elegido", (d.tiers || []).map(function (x) { return { k: tierName[x.k] || x.k, n: x.n }; }));
     rank(b, "Funciones usadas", feats);
 
+    renderBans(d.bans || []);
+
     var tb = $("rows");
     tb.textContent = "";
     (d.recent || []).forEach(function (s) {
@@ -298,6 +315,50 @@ td small { display: block; color: var(--muted); }
       var tr = document.createElement("tr"), c = el("td", "empty", "Todavía no hay visitas registradas.");
       c.colSpan = 9; tr.appendChild(c); tb.appendChild(tr);
     }
+  }
+
+  function renderBans(list) {
+    var tb = $("bans");
+    tb.textContent = "";
+    $("unbanAll").hidden = !list.length;
+    if (!list.length) {
+      var tr0 = document.createElement("tr"), c0 = el("td", "empty", "Sin intentos de acceso sospechosos.");
+      c0.colSpan = 5; tr0.appendChild(c0); tb.appendChild(tr0);
+      return;
+    }
+    list.forEach(function (x) {
+      var tr = document.createElement("tr");
+      var st = document.createElement("td");
+      st.appendChild(el("span", "tag" + (x.banned ? " bad" : ""), x.banned ? "Bloqueado" : x.fails + " fallo" + (x.fails === 1 ? "" : "s")));
+      tr.appendChild(st);
+      var pl = document.createElement("td");
+      pl.appendChild(document.createTextNode(x.city ? x.city + (x.country ? ", " + country(x.country) : "") : (country(x.country) || "—")));
+      pl.appendChild(el("small", "", x.isp || ""));
+      tr.appendChild(pl);
+      var dv = document.createElement("td");
+      dv.appendChild(document.createTextNode(x.ua || "—"));
+      dv.appendChild(el("small", "", x.h));
+      tr.appendChild(dv);
+      tr.appendChild(el("td", "", when(x.banned && x.banned_ts ? x.banned_ts : x.last_ts)));
+      var ac = document.createElement("td");
+      var bt = el("button", "mini", x.banned ? "Desbloquear" : "Borrar");
+      bt.type = "button";
+      bt.addEventListener("click", function () { unban({ action: "unban", id: x.h }); });
+      ac.appendChild(bt);
+      tr.appendChild(ac);
+      tb.appendChild(tr);
+    });
+  }
+  function unban(payload) {
+    fetch(ENDPOINT + "/admin/bans", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + getTok() },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (x) {
+        if (!x.ok) { $("appErr").textContent = x.d.error || "No se pudo desbloquear."; return; }
+        load();
+      }).catch(function () { $("appErr").textContent = "No se pudo conectar con el Worker."; });
   }
 
   function rank(parent, title, items) {
@@ -391,6 +452,7 @@ td small { display: block; color: var(--muted); }
     load();
   });
   $("refresh").addEventListener("click", load);
+  $("unbanAll").addEventListener("click", function () { unban({ action: "unban_all" }); });
   $("logout").addEventListener("click", function () { setTok(""); showLogin(""); });
 
   if (getTok()) load();
