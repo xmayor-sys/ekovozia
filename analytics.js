@@ -3,10 +3,10 @@
 (function () {
   "use strict";
   var ENDPOINT = "https://eco.x-mayor.workers.dev";
-  var CONSENT_KEY = "ekovozia-consent";
+  var CONSENT_KEY = "ekovozia-consent-v2"; // v2: texto ampliado (modelo del dispositivo), se vuelve a preguntar
   var VID = "ekv_vid";      // visitante: 13 meses
   var SID = "ekv_sid";      // sesión: caduca tras 30 min sin actividad
-  var running = false, vid = "", sid = "", ret = 0, act = 0, timers = [];
+  var running = false, vid = "", sid = "", ret = 0, act = 0, timers = [], hints = { mdl: "", osv: "" };
 
   function getConsent() { try { return localStorage.getItem(CONSENT_KEY); } catch (e) { return null; } }
   function setConsent(v) { try { if (v) localStorage.setItem(CONSENT_KEY, v); else localStorage.removeItem(CONSENT_KEY); } catch (e) {} }
@@ -42,7 +42,7 @@
     var tz = "";
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) {}
     return {
-      sid: sid, vid: vid, ret: ret, act: act,
+      sid: sid, vid: vid, ret: ret, act: act, mdl: hints.mdl, osv: hints.osv,
       path: location.pathname, ref: ref,
       scr: (screen.width || 0) + "x" + (screen.height || 0),
       lang: navigator.language || "", tz: tz
@@ -66,6 +66,23 @@
     } catch (e) {}
   }
 
+  /* Modelo del móvil y versión del sistema (solo Chrome/Edge/Android los ofrecen) */
+  function loadHints(cb) {
+    var done = false;
+    function fin() { if (!done) { done = true; cb(); } }
+    setTimeout(fin, 800);
+    try {
+      var uad = navigator.userAgentData;
+      if (uad && uad.getHighEntropyValues) {
+        uad.getHighEntropyValues(["model", "platformVersion"]).then(function (v) {
+          hints.mdl = v.model || "";
+          hints.osv = v.platformVersion || "";
+          fin();
+        }, fin);
+      } else fin();
+    } catch (e) { fin(); }
+  }
+
   function start() {
     if (running) return;
     vid = readCookie(VID);
@@ -74,7 +91,7 @@
     writeCookie(VID, vid, 395 * 86400000);
     sid = readCookie(SID) || rid();
     running = true;
-    send("view");
+    loadHints(function () { if (running) send("view"); });
     // tiempo activo: segundos con la pestaña visible
     timers.push(setInterval(function () { if (document.visibilityState === "visible") act++; }, 1000));
     timers.push(setInterval(function () { if (document.visibilityState === "visible") send("ping"); }, 15000));
@@ -120,7 +137,7 @@
     banner.setAttribute("aria-label", "Cookies");
     banner.innerHTML =
       "<strong>Cookies de estadísticas</strong>" +
-      "<p>Usamos cookies propias, sin publicidad, para contar visitas: un identificador anónimo, el país, el dispositivo y cuánto tiempo usas Ekovozia. " +
+      "<p>Usamos cookies propias, sin publicidad, para contar visitas: un identificador anónimo, el país, el dispositivo (tipo, modelo y versión del sistema) y cuánto tiempo usas Ekovozia. " +
       "Puedes aceptarlas o rechazarlas y cambiarlo cuando quieras. <a href=\"/acerca#privacidad\">Más información</a></p>" +
       "<div class=\"row\"><button type=\"button\" data-v=\"no\">Rechazar</button><button type=\"button\" class=\"ok\" data-v=\"yes\">Aceptar</button></div>";
     banner.addEventListener("click", function (e) {
@@ -144,7 +161,8 @@
   window.EkoTrack = {
     event: function (type, extra) { send(type, extra); },
     reset: function () { showBanner(); },
-    consent: getConsent
+    consent: getConsent,
+    sid: function () { return running ? sid : ""; }
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

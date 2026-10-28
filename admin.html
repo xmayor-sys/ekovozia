@@ -87,6 +87,12 @@ td small { display: block; color: var(--muted); }
 .tag.on { background: var(--ok); color: var(--bg); }
 .tag.bad { background: var(--danger); color: var(--bg); }
 .mini { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 10px; cursor: pointer; font-size: .8rem; }
+.msg { white-space: pre-wrap; word-break: break-word; max-width: 520px; }
+.userbtn { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; font-weight: 700; }
+.acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.mini.warn { border-color: #C58A00; color: #C58A00; }
+.mini.danger { border-color: var(--danger); color: var(--danger); }
+.filter { font-size: .82rem; color: var(--muted); margin: 0 0 10px; }
 .sechead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
 .sechead h2 { margin: 0; }
 [hidden] { display: none !important; }
@@ -149,6 +155,28 @@ td small { display: block; color: var(--muted); }
     <p class="note">Tras 4 claves incorrectas seguidas, esa conexión queda bloqueada hasta que la desbloquees aquí. Solo afecta al panel, no a la web.</p>
   </div>
 
+  <div class="card" style="margin-bottom:14px">
+    <div class="sechead"><h2>Conversaciones</h2></div>
+    <p class="filter" id="msgFilter"></p>
+    <div class="tablewrap">
+      <table style="min-width:760px">
+        <thead><tr><th>Hora</th><th>Usuario</th><th>Mensaje</th><th></th></tr></thead>
+        <tbody id="msgs"></tbody>
+      </table>
+    </div>
+    <p class="note">Los mensajes se guardan 30 días. El «usuario» es la huella de una conexión: si varias personas comparten internet (casa, colegio, datos móviles), una sanción les afecta a todas.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="sechead"><h2>Usuarios sancionados</h2></div>
+    <div class="tablewrap">
+      <table style="min-width:640px">
+        <thead><tr><th>Estado</th><th>Usuario</th><th>Motivo / aviso</th><th>Desde</th><th></th></tr></thead>
+        <tbody id="blocks"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="card">
     <h2>Últimas sesiones</h2>
     <div class="tablewrap">
@@ -163,7 +191,7 @@ td small { display: block; color: var(--muted); }
 <script>
 (function () {
   var ENDPOINT = "https://eco.x-mayor.workers.dev";
-  var days = 7, timer = null;
+  var days = 7, timer = null, lastData = null, userFilter = "";
   var $ = function (id) { return document.getElementById(id); };
   var regionNames = null;
   try { regionNames = new Intl.DisplayNames(["es"], { type: "region" }); } catch (e) {}
@@ -276,6 +304,7 @@ td small { display: block; color: var(--muted); }
     rank(b, "Países", (d.countries || []).map(function (x) { return { k: x.k === "(desconocido)" ? x.k : country(x.k), n: x.n }; }));
     rank(b, "Ciudades", d.cities);
     rank(b, "Dispositivos", d.devices);
+    rank(b, "Modelos de móvil", d.models);
     rank(b, "Sistemas operativos", d.systems);
     rank(b, "Navegadores", d.browsers);
     rank(b, "Origen del tráfico", d.referrers);
@@ -287,6 +316,8 @@ td small { display: block; color: var(--muted); }
     rank(b, "Funciones usadas", feats);
 
     renderBans(d.bans || []);
+    lastData = d;
+    renderMod();
 
     var tb = $("rows");
     tb.textContent = "";
@@ -301,7 +332,7 @@ td small { display: block; color: var(--muted); }
       };
       td(when(s.last_ts), s.first_ts ? "inició " + new Date(s.first_ts).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "");
       td(s.city ? s.city + (s.country ? ", " + country(s.country) : "") : (country(s.country) || "—"), s.isp || "");
-      td(s.device + " · " + s.os, s.browser);
+      td((s.model ? s.model : s.device) + " · " + s.os + (s.osv ? " " + s.osv : ""), s.browser + (s.bver ? " " + s.bver : "") + (s.model ? " · " + s.device : ""));
       td(s.screen || "—", s.lang + (s.tz ? " · " + s.tz : ""));
       td(fmtDur(s.dur));
       td(String(s.pages));
@@ -348,6 +379,95 @@ td small { display: block; color: var(--muted); }
       tr.appendChild(ac);
       tb.appendChild(tr);
     });
+  }
+  function renderMod() {
+    var d = lastData || {};
+    var blocks = d.blocks || [], byH = {};
+    blocks.forEach(function (b) { byH[b.h] = b; });
+
+    var tb = $("blocks");
+    tb.textContent = "";
+    if (!blocks.length) {
+      var t0 = document.createElement("tr"), c0 = el("td", "empty", "No hay usuarios sancionados.");
+      c0.colSpan = 5; t0.appendChild(c0); tb.appendChild(t0);
+    }
+    blocks.forEach(function (b) {
+      var tr = document.createElement("tr");
+      var st = document.createElement("td");
+      st.appendChild(el("span", "tag" + (b.kind === "ban" ? " bad" : ""), b.kind === "ban" ? "Suspendido" : (b.ack ? "Avisado (visto)" : "Aviso pendiente")));
+      tr.appendChild(st);
+      var us = document.createElement("td");
+      us.appendChild(document.createTextNode(b.h));
+      us.appendChild(el("small", "", (b.city ? b.city + (b.country ? ", " + country(b.country) : "") : country(b.country)) + (b.dev ? " · " + b.dev : "")));
+      tr.appendChild(us);
+      tr.appendChild(el("td", "msg", b.text || "—"));
+      tr.appendChild(el("td", "", when(b.ts)));
+      var ac = document.createElement("td");
+      var bt = el("button", "mini", b.kind === "ban" ? "Quitar suspensión" : "Quitar aviso");
+      bt.type = "button";
+      bt.addEventListener("click", function () { mod({ action: "clear", h: b.h }); });
+      ac.appendChild(bt);
+      tr.appendChild(ac);
+      tb.appendChild(tr);
+    });
+
+    var msgs = (d.messages || []).filter(function (m) { return !userFilter || m.h === userFilter; });
+    var f = $("msgFilter");
+    f.textContent = "";
+    if (userFilter) {
+      f.appendChild(document.createTextNode("Mostrando solo al usuario " + userFilter + ". "));
+      var all = el("button", "userbtn", "Ver todos");
+      all.type = "button";
+      all.addEventListener("click", function () { userFilter = ""; renderMod(); });
+      f.appendChild(all);
+    }
+    var mb = $("msgs");
+    mb.textContent = "";
+    if (!msgs.length) {
+      var t1 = document.createElement("tr"), c1 = el("td", "empty", "Todavía no hay mensajes guardados.");
+      c1.colSpan = 4; t1.appendChild(c1); mb.appendChild(t1);
+    }
+    msgs.forEach(function (m) {
+      var tr = document.createElement("tr");
+      tr.appendChild(el("td", "", when(m.ts)));
+      var us = document.createElement("td");
+      var ub = el("button", "userbtn", m.h);
+      ub.type = "button";
+      ub.title = "Ver solo a este usuario";
+      ub.addEventListener("click", function () { userFilter = m.h; renderMod(); });
+      us.appendChild(ub);
+      us.appendChild(el("small", "", (m.city ? m.city + (m.country ? ", " + country(m.country) : "") : country(m.country)) + (m.dev ? " · " + m.dev : "")));
+      var bk = byH[m.h];
+      if (bk) us.appendChild(el("span", "tag" + (bk.kind === "ban" ? " bad" : ""), bk.kind === "ban" ? "suspendido" : "avisado"));
+      tr.appendChild(us);
+      tr.appendChild(el("td", "msg", m.text));
+      var ac = document.createElement("td"), box = el("div", "acts");
+      var w = el("button", "mini warn", "Advertir"); w.type = "button";
+      w.addEventListener("click", function () {
+        var t = window.prompt("Texto del aviso (se mostrará al usuario en su próximo mensaje):", "Por favor, usa Ekovozia de forma respetuosa.");
+        if (t && t.trim()) mod({ action: "warn", h: m.h, text: t.trim() });
+      });
+      var bn = el("button", "mini danger", "Banear"); bn.type = "button";
+      bn.addEventListener("click", function () {
+        var t = window.prompt("Motivo de la suspensión (se mostrará al usuario):", "Uso abusivo del servicio.");
+        if (t !== null) mod({ action: "ban", h: m.h, text: t.trim() });
+      });
+      box.appendChild(w); box.appendChild(bn); ac.appendChild(box);
+      tr.appendChild(ac);
+      mb.appendChild(tr);
+    });
+  }
+  function mod(payload) {
+    fetch(ENDPOINT + "/admin/mod", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + getTok() },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (x) {
+        if (!x.ok) { $("appErr").textContent = x.d.error || "No se pudo aplicar la acción."; return; }
+        $("appErr").textContent = "";
+        load();
+      }).catch(function () { $("appErr").textContent = "No se pudo conectar con el Worker."; });
   }
   function unban(payload) {
     fetch(ENDPOINT + "/admin/bans", {

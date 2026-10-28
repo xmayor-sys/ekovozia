@@ -404,7 +404,7 @@ textarea:focus-visible { outline: none; }
       </button>
     </form>
     <p class="fine" id="fine">Ekovozia puede equivocarse. Comprueba los datos importantes.</p>
-    <p class="fine" style="margin-top:2px"><a href="/acerca#privacidad" style="color:inherit">Privacidad</a> · <a href="#" id="cookieLink" style="color:inherit">Cookies</a></p>
+    <p class="fine" style="margin-top:2px">Los mensajes se guardan 30 días para moderar abusos. <a href="/acerca#privacidad" style="color:inherit">Privacidad</a> · <a href="#" id="cookieLink" style="color:inherit">Cookies</a></p>
   </div>
 </footer>
 
@@ -501,7 +501,7 @@ textarea:focus-visible { outline: none; }
 
   var TIERS = { basic: { index: 0 }, medium: { index: 1 }, pro: { index: 2 } };
 
-  var PAGE_VERSION = "web 3.2";
+  var PAGE_VERSION = "web 3.3";
   var ENDPOINT = "https://eco.x-mayor.workers.dev";
   var MAX_REC_MS = 120000;
   var STORE_KEY = "eco-chats";
@@ -1549,6 +1549,7 @@ textarea:focus-visible { outline: none; }
         council: councilOn,
         stream: !councilOn,
         lang: langSel === "auto" ? "" : langSel,
+        sid: window.EkoTrack ? EkoTrack.sid() : "",
         system: payload[0].content,
         messages: payload.slice(1)
       }),
