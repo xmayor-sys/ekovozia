@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Panel · Ekovozia</title>
+<link rel="icon" href="/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+:root {
+  --bg: #EDF0F3; --surface: #FFFFFF; --ink: #12202C; --muted: #5B6B79; --line: #D3DAE1;
+  --accent: #2E4BDB; --accent-ink: #FFFFFF; --accent-soft: #DCE3FB; --danger: #B4311F; --ok: #1E8A4C;
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0E141A; --surface: #151D25; --ink: #E6ECF1; --muted: #8D9CAA; --line: #263340;
+    --accent: #7C93FF; --accent-ink: #0E141A; --accent-soft: #26325F; --danger: #FF8A78; --ok: #5CD08A; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--font-body); }
+button, input { font: inherit; color: inherit; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 60px; }
+h1, h2 { font-family: var(--font-display); margin: 0; }
+h2 { font-size: 1rem; margin-bottom: 12px; }
+
+/* login */
+.login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.login form { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 28px; width: 100%; max-width: 360px; }
+.login img { width: 44px; height: 44px; border-radius: 12px; }
+.login h1 { font-size: 1.4rem; margin: 12px 0 4px; }
+.login p { color: var(--muted); margin: 0 0 16px; font-size: .9rem; }
+.login input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); margin-bottom: 10px; }
+.login .err, .err { color: var(--danger); font-size: .85rem; min-height: 1.2em; margin: 0 0 8px; }
+.primary { width: 100%; padding: 12px; border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-weight: 700; cursor: pointer; }
+
+/* cabecera */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 18px; }
+.top h1 { font-size: 1.5rem; margin-right: auto; display: flex; align-items: center; gap: 10px; }
+.top h1 img { width: 32px; height: 32px; border-radius: 9px; }
+.live { display: inline-flex; align-items: center; gap: 7px; font-size: .85rem; padding: 6px 12px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: pulse 2s infinite; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
+.seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 9px; cursor: pointer; color: var(--muted); font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.ghost { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 8px 12px; cursor: pointer; }
+
+/* tarjetas */
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+.kpi b { display: block; font: 700 1.7rem/1.1 var(--font-display); }
+.kpi span { color: var(--muted); font-size: .82rem; }
+.kpi small { display: block; color: var(--muted); font-size: .75rem; margin-top: 4px; }
+.grid2 { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 14px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-bottom: 14px; }
+@media (min-width: 900px) { .grid2 { grid-template-columns: 2fr 1fr; } }
+.note { color: var(--muted); font-size: .78rem; margin: 8px 0 0; }
+
+/* gráficos */
+svg.chart { width: 100%; height: 190px; display: block; }
+svg.chart text { fill: var(--muted); font-size: 10px; font-family: var(--font-body); }
+svg.chart .bar { fill: var(--accent); }
+svg.chart .bar2 { fill: var(--accent-soft); }
+svg.chart .grid { stroke: var(--line); stroke-width: 1; }
+.legend { display: flex; gap: 14px; font-size: .78rem; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+/* listas con barras */
+.rank { list-style: none; margin: 0; padding: 0; }
+.rank li { position: relative; display: flex; justify-content: space-between; gap: 10px; padding: 6px 8px; margin-bottom: 4px; border-radius: 8px; font-size: .88rem; overflow: hidden; }
+.rank li::before { content: ""; position: absolute; inset: 0; width: var(--w, 0%); background: var(--accent-soft); z-index: 0; }
+.rank li span { position: relative; z-index: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank li span + span { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+.empty { color: var(--muted); font-size: .85rem; }
+
+/* tabla */
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .82rem; min-width: 860px; }
+th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td small { display: block; color: var(--muted); }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: .72rem; background: var(--accent-soft); }
+.tag.on { background: var(--ok); color: var(--bg); }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="login" id="login">
+  <form id="loginForm">
+    <img src="/logo.png" alt="">
+    <h1>Panel de Ekovozia</h1>
+    <p>Introduce tu clave de administrador.</p>
+    <input id="token" type="password" autocomplete="current-password" placeholder="Clave" required>
+    <p class="err" id="loginErr" role="alert"></p>
+    <button class="primary" type="submit">Entrar</button>
+  </form>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <div class="top">
+    <h1><img src="/logo.png" alt="">Panel</h1>
+    <span class="live" title="Sesiones con actividad en los últimos 5 minutos"><i></i><span id="online">0</span> en línea</span>
+    <div class="seg" id="range" role="group" aria-label="Periodo">
+      <button type="button" data-d="1">24 h</button>
+      <button type="button" data-d="7" aria-pressed="true">7 días</button>
+      <button type="button" data-d="30">30 días</button>
+      <button type="button" data-d="90">90 días</button>
+    </div>
+    <button class="ghost" id="refresh" type="button">Actualizar</button>
+    <button class="ghost" id="logout" type="button">Salir</button>
+  </div>
+  <p class="err" id="appErr" role="alert"></p>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Visitas por día</h2>
+      <svg class="chart" id="dailyChart" viewBox="0 0 600 190" preserveAspectRatio="none" role="img" aria-label="Sesiones y visitantes por día"></svg>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Sesiones</span><span><i style="background:var(--accent-soft)"></i>Visitantes únicos</span></div>
+      <p class="note">Los días se cuentan en hora UTC.</p>
+    </div>
+    <div class="card">
+      <h2>Horas de más actividad</h2>
+      <svg class="chart" id="hourChart" viewBox="0 0 600 190" preserveAspectRatio="none" role="img" aria-label="Sesiones por hora del día"></svg>
+      <p class="note">En tu hora local.</p>
+    </div>
+  </div>
+
+  <div class="grid3" id="breakdowns"></div>
+
+  <div class="card">
+    <h2>Últimas sesiones</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Última actividad</th><th>Lugar</th><th>Dispositivo</th><th>Pantalla</th><th>Tiempo</th><th>Págs.</th><th>Msgs.</th><th>Origen</th><th>Visitante</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var ENDPOINT = "https://eco.x-mayor.workers.dev";
+  var days = 7, timer = null;
+  var $ = function (id) { return document.getElementById(id); };
+  var regionNames = null;
+  try { regionNames = new Intl.DisplayNames(["es"], { type: "region" }); } catch (e) {}
+
+  function getTok() { try { return sessionStorage.getItem("eko-admin") || ""; } catch (e) { return ""; } }
+  function setTok(v) { try { if (v) sessionStorage.setItem("eko-admin", v); else sessionStorage.removeItem("eko-admin"); } catch (e) {} }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function fmtDur(s) {
+    s = Math.round(s || 0);
+    if (s < 60) return s + " s";
+    var m = Math.floor(s / 60);
+    if (m < 60) return m + " min " + (s % 60) + " s";
+    return Math.floor(m / 60) + " h " + (m % 60) + " min";
+  }
+  function pct(a, b) { return b ? Math.round((a / b) * 100) + "%" : "0%"; }
+  function num(n) { return Number(n || 0).toLocaleString("es-ES"); }
+  function country(c) {
+    if (!c) return "";
+    try { return (regionNames && regionNames.of(c)) || c; } catch (e) { return c; }
+  }
+  function when(ts) {
+    var d = new Date(ts), diff = (Date.now() - ts) / 1000;
+    if (diff < 60) return "ahora mismo";
+    if (diff < 3600) return "hace " + Math.round(diff / 60) + " min";
+    return d.toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  }
+
+  function load() {
+    var tok = getTok();
+    if (!tok) return showLogin("");
+    $("appErr").textContent = "";
+    fetch(ENDPOINT + "/admin/stats", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + tok },
+      body: JSON.stringify({ days: days })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, d: d }; });
+    }).then(function (x) {
+      if (x.status === 401) { setTok(""); return showLogin("Clave incorrecta."); }
+      if (!x.ok) {
+        var msg = x.d.error || ("Error " + x.status);
+        if (!$("app").hidden) $("appErr").textContent = msg + (x.d.detail ? ": " + x.d.detail : "");
+        else showLogin(msg);
+        return;
+      }
+      showApp();
+      render(x.d);
+    }).catch(function () {
+      var m = "No se pudo conectar con el Worker.";
+      if (!$("app").hidden) $("appErr").textContent = m; else showLogin(m);
+    });
+  }
+
+  function showLogin(msg) {
+    $("app").hidden = true;
+    $("login").hidden = false;
+    $("loginErr").textContent = msg || "";
+    clearInterval(timer);
+  }
+  function showApp() {
+    $("login").hidden = true;
+    $("app").hidden = false;
+    clearInterval(timer);
+    timer = setInterval(load, 30000);
+  }
+
+  /* ----- render ----- */
+  function render(d) {
+    var t = d.totals || {};
+    $("online").textContent = d.online;
+
+    var k = $("kpis");
+    k.textContent = "";
+    [
+      ["Visitantes únicos", num(t.visitors), num(t.ips) + (t.ips == 1 ? " conexión distinta" : " conexiones distintas")],
+      ["Sesiones", num(t.sessions), pct(t.returning_s, t.sessions) + " de visitantes que vuelven"],
+      ["Páginas vistas", num(t.pages), ""],
+      ["Mensajes enviados", num(t.msgs), t.sessions ? (t.msgs / t.sessions).toFixed(1).replace(".", ",") + " por sesión" : ""],
+      ["Tiempo medio", fmtDur(t.avgdur), "tiempo activo por sesión"],
+      ["Sesiones que chatean", pct(t.chatting, t.sessions), num(t.chatting) + " de " + num(t.sessions)],
+      ["Rebote", pct(t.bounce, t.sessions), "sin mensajes y < 10 s"],
+      ["Usos del micrófono", num(t.voice), ""]
+    ].forEach(function (x) {
+      var c = el("div", "card kpi");
+      c.appendChild(el("b", "", x[1]));
+      c.appendChild(el("span", "", x[0]));
+      if (x[2]) c.appendChild(el("small", "", x[2]));
+      k.appendChild(c);
+    });
+
+    drawDaily(d.daily || [], d.days, d.now);
+    drawHours(d.hours || []);
+
+    var b = $("breakdowns");
+    b.textContent = "";
+    var f = d.features || {};
+    var tierName = { basic: "Básico", medium: "Medio", pro: "Pro", "?": "Sin dato" };
+    var feats = [];
+    if (f.total) {
+      feats.push({ k: "Con búsqueda web", n: f.web || 0 });
+      feats.push({ k: "Con consejo de IAs", n: f.council || 0 });
+      feats.push({ k: "Mensajes totales", n: f.total || 0 });
+    }
+    rank(b, "Países", (d.countries || []).map(function (x) { return { k: x.k === "(desconocido)" ? x.k : country(x.k), n: x.n }; }));
+    rank(b, "Ciudades", d.cities);
+    rank(b, "Dispositivos", d.devices);
+    rank(b, "Sistemas operativos", d.systems);
+    rank(b, "Navegadores", d.browsers);
+    rank(b, "Origen del tráfico", d.referrers);
+    rank(b, "Idiomas del navegador", d.languages);
+    rank(b, "Tamaños de pantalla", d.screens);
+    rank(b, "Zonas horarias", d.timezones);
+    rank(b, "Operadores de internet", d.isps);
+    rank(b, "Modelo elegido", (d.tiers || []).map(function (x) { return { k: tierName[x.k] || x.k, n: x.n }; }));
+    rank(b, "Funciones usadas", feats);
+
+    var tb = $("rows");
+    tb.textContent = "";
+    (d.recent || []).forEach(function (s) {
+      var tr = document.createElement("tr");
+      var td = function (main, sub) {
+        var c = document.createElement("td");
+        c.appendChild(document.createTextNode(main));
+        if (sub) c.appendChild(el("small", "", sub));
+        tr.appendChild(c);
+        return c;
+      };
+      td(when(s.last_ts), s.first_ts ? "inició " + new Date(s.first_ts).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "");
+      td(s.city ? s.city + (s.country ? ", " + country(s.country) : "") : (country(s.country) || "—"), s.isp || "");
+      td(s.device + " · " + s.os, s.browser);
+      td(s.screen || "—", s.lang + (s.tz ? " · " + s.tz : ""));
+      td(fmtDur(s.dur));
+      td(String(s.pages));
+      td(String(s.msgs), s.voice ? s.voice + " de voz" : "");
+      td(s.ref || "Directo", s.landing || "");
+      var vc = td(s.vid, s.ip_hash);
+      vc.appendChild(el("span", "tag" + (s.recurrent ? " on" : ""), s.recurrent ? "recurrente" : "nuevo"));
+      tb.appendChild(tr);
+    });
+    if (!(d.recent || []).length) {
+      var tr = document.createElement("tr"), c = el("td", "empty", "Todavía no hay visitas registradas.");
+      c.colSpan = 9; tr.appendChild(c); tb.appendChild(tr);
+    }
+  }
+
+  function rank(parent, title, items) {
+    var c = el("div", "card");
+    c.appendChild(el("h2", "", title));
+    if (!items || !items.length) { c.appendChild(el("p", "empty", "Sin datos todavía.")); parent.appendChild(c); return; }
+    var max = Math.max.apply(null, items.map(function (x) { return x.n; })) || 1;
+    var ul = el("ul", "rank");
+    items.forEach(function (x) {
+      var li = document.createElement("li");
+      li.style.setProperty("--w", Math.max(3, Math.round(x.n / max * 100)) + "%");
+      li.appendChild(el("span", "", x.k));
+      li.appendChild(el("span", "", num(x.n)));
+      ul.appendChild(li);
+    });
+    c.appendChild(ul);
+    parent.appendChild(c);
+  }
+
+  /* ----- gráficos SVG ----- */
+  var NS = "http://www.w3.org/2000/svg";
+  function s(tag, attrs, text) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function bars(svg, labels, a, bvals, aTitle) {
+    svg.textContent = "";
+    var W = 600, H = 190, pl = 28, pb = 20, pt = 8;
+    var max = Math.max.apply(null, a.concat(bvals || [0], [1]));
+    var step = max <= 4 ? 1 : Math.ceil(max / 4);
+    var top = Math.ceil(max / step) * step;
+    for (var g = 0; g <= top; g += step) {
+      var y = H - pb - (g / top) * (H - pb - pt);
+      svg.appendChild(s("line", { x1: pl, x2: W, y1: y, y2: y, "class": "grid" }));
+      svg.appendChild(s("text", { x: pl - 5, y: y + 3, "text-anchor": "end" }, String(g)));
+    }
+    var n = labels.length, slot = (W - pl) / n, bw = Math.max(2, Math.min(28, slot * 0.7));
+    var every = Math.ceil(n / 12);
+    labels.forEach(function (lb, i) {
+      var cx = pl + slot * i + slot / 2;
+      if (bvals) {
+        var h2 = (bvals[i] / top) * (H - pb - pt);
+        var r2 = s("rect", { x: cx - bw / 2, y: H - pb - h2, width: bw, height: h2, rx: 2, "class": "bar2" });
+        r2.appendChild(s("title", {}, lb + ": " + bvals[i] + " visitantes"));
+        svg.appendChild(r2);
+      }
+      var h = (a[i] / top) * (H - pb - pt);
+      var w = bvals ? bw * 0.55 : bw;
+      var r = s("rect", { x: cx - w / 2, y: H - pb - h, width: w, height: h, rx: 2, "class": "bar" });
+      r.appendChild(s("title", {}, lb + ": " + a[i] + " " + (aTitle || "")));
+      svg.appendChild(r);
+      if (i % every === 0) svg.appendChild(s("text", { x: cx, y: H - 5, "text-anchor": "middle" }, lb));
+    });
+  }
+  function drawDaily(rows, nd, now) {
+    var map = {};
+    rows.forEach(function (r) { map[r.d] = r; });
+    var count = nd === 1 ? 2 : nd, labels = [], a = [], v = [];
+    for (var i = count - 1; i >= 0; i--) {
+      var iso = new Date(now - i * 86400000).toISOString().slice(0, 10);
+      var r = map[iso];
+      labels.push(iso.slice(8, 10) + "/" + iso.slice(5, 7));
+      a.push(r ? r.sessions : 0);
+      v.push(r ? r.visitors : 0);
+    }
+    bars($("dailyChart"), labels, a, v, "sesiones");
+  }
+  function drawHours(rows) {
+    var off = new Date().getTimezoneOffset() / 60, arr = [];
+    for (var h = 0; h < 24; h++) arr.push(0);
+    rows.forEach(function (r) { arr[(((Math.round(r.h - off)) % 24) + 24) % 24] += r.n; });
+    var labels = arr.map(function (_, i) { return i + "h"; });
+    bars($("hourChart"), labels, arr, null, "sesiones");
+  }
+
+  /* ----- eventos ----- */
+  $("loginForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    setTok($("token").value.trim());
+    $("token").value = "";
+    $("loginErr").textContent = "Comprobando…";
+    load();
+  });
+  $("range").addEventListener("click", function (e) {
+    var d = e.target && e.target.getAttribute("data-d");
+    if (!d) return;
+    days = Number(d);
+    Array.prototype.forEach.call($("range").children, function (b) { b.setAttribute("aria-pressed", b === e.target ? "true" : "false"); });
+    load();
+  });
+  $("refresh").addEventListener("click", load);
+  $("logout").addEventListener("click", function () { setTok(""); showLogin(""); });
+
+  if (getTok()) load();
+})();
+</script>
+</body>
+</html>

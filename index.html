@@ -1,0 +1,1593 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ekovozia - Asistente de IA con voz, gratis y en español</title>
+<meta name="description" content="Ekovozia es un asistente de inteligencia artificial gratuito: habla o escribe en más de 60 idiomas, busca en internet con fuentes, guarda tus conversaciones y escucha las respuestas en voz alta.">
+<meta name="application-name" content="Ekovozia">
+<meta name="apple-mobile-web-app-title" content="Ekovozia">
+<meta name="theme-color" content="#2E4BDB">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://ekovozia.pages.dev/">
+<link rel="icon" type="image/png" sizes="512x512" href="/logo.png">
+<link rel="shortcut icon" href="/logo.png">
+<link rel="apple-touch-icon" href="/logo.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ekovozia">
+<meta property="og:title" content="Ekovozia - Asistente de IA con voz">
+<meta property="og:description" content="Asistente de IA gratuito en más de 60 idiomas: escribe o habla y escucha las respuestas.">
+<meta property="og:url" content="https://ekovozia.pages.dev/">
+<meta property="og:image" content="https://ekovozia.pages.dev/logo.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Ekovozia - Asistente de IA con voz">
+<meta name="twitter:description" content="Asistente de IA gratuito en más de 60 idiomas: escribe o habla y escucha las respuestas.">
+<meta name="twitter:image" content="https://ekovozia.pages.dev/logo.png">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","name":"Ekovozia","alternateName":["Ekovozia IA","Ekovozia asistente de IA"],"url":"https://ekovozia.pages.dev/","inLanguage":"es"}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"Ekovozia","url":"https://ekovozia.pages.dev/","applicationCategory":"UtilitiesApplication","inLanguage":"es","description":"Asistente de inteligencia artificial gratuito con entrada y salida de voz en más de 60 idiomas.","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"}}
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" onload="window.__katexReady && window.__katexReady()"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #EDF0F3;
+  --surface: #FFFFFF;
+  --ink: #12202C;
+  --muted: #5B6B79;
+  --line: #D3DAE1;
+  --accent: #2E4BDB;
+  --accent-ink: #FFFFFF;
+  --user-bg: #12202C;
+  --user-ink: #F4F7FA;
+  --code-bg: #E1E7EC;
+  --danger: #B4311F;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "DM Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --ease: cubic-bezier(.22, .8, .24, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E141A;
+    --surface: #151D25;
+    --ink: #E6ECF1;
+    --muted: #8D9CAA;
+    --line: #263340;
+    --accent: #7C93FF;
+    --accent-ink: #0E141A;
+    --user-bg: #24323F;
+    --user-ink: #E6ECF1;
+    --code-bg: #1B252E;
+    --danger: #FF8A78;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E141A;
+  --surface: #151D25;
+  --ink: #E6ECF1;
+  --muted: #8D9CAA;
+  --line: #263340;
+  --accent: #7C93FF;
+  --accent-ink: #0E141A;
+  --user-bg: #24323F;
+  --user-ink: #E6ECF1;
+  --code-bg: #1B252E;
+  --danger: #FF8A78;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { width: 100%; max-width: 740px; margin-inline: auto; }
+:where(button, textarea, input, summary, select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* Cabecera */
+header { flex: none; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand .logo {
+  flex: none; display: block;
+  width: 40px; height: 40px; min-width: 40px; aspect-ratio: 1 / 1;
+  border-radius: 12px; object-fit: cover; object-position: center;
+}
+.brand h1 { margin: 0; font-family: var(--font-display); font-size: 1.35rem; line-height: 1; font-weight: 700; letter-spacing: -0.02em; }
+.actions { display: flex; align-items: center; gap: 4px; flex: none; }
+.ibtn {
+  flex: none; width: 38px; height: 38px; display: grid; place-items: center;
+  background: transparent; color: var(--muted); border: none; border-radius: 10px;
+  cursor: pointer; transition: color .2s, background .2s, transform .15s;
+}
+.ibtn:hover:not(:disabled) { color: var(--accent); background: var(--surface); }
+.ibtn:active:not(:disabled) { transform: scale(.94); }
+.ibtn:disabled { opacity: .35; cursor: default; }
+.ibtn[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); }
+
+/* Conversación */
+main { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scroll-behavior: smooth; }
+main .wrap { padding-block: 26px 18px; display: flex; flex-direction: column; gap: 22px; min-height: 100%; }
+
+.hello { margin-block: auto; padding-block: 8px; animation: fade .6s var(--ease); }
+.hello .hero { display: block; width: 72px; height: 72px; margin: 0 0 18px; border-radius: 20px; object-fit: cover; object-position: center; animation: float 6s ease-in-out infinite; }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.hello h2 {
+  margin: 0 0 8px; font-family: var(--font-display); font-weight: 700;
+  font-size: clamp(1.9rem, 6.5vw, 2.9rem); line-height: 1.05; letter-spacing: -0.03em; text-wrap: balance; max-width: 15ch;
+}
+.hello p { margin: 0 0 22px; color: var(--muted); max-width: 44ch; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font: inherit; font-size: .9rem; text-align: left; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer;
+  opacity: 0; animation: chipin .5s var(--ease) forwards;
+  transition: border-color .2s, color .2s, transform .2s;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+.shuffle {
+  font: inherit; font-size: .82rem; color: var(--muted); background: none; border: none; cursor: pointer;
+  padding: 10px 2px 0; display: inline-flex; align-items: center; gap: 6px; transition: color .2s;
+}
+.shuffle:hover { color: var(--accent); }
+.shuffle svg { transition: transform .5s var(--ease); }
+.shuffle:hover svg { transform: rotate(180deg); }
+@keyframes chipin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+.msg { animation: rise .4s var(--ease); min-width: 0; }
+.msg.user { display: flex; justify-content: flex-end; }
+.msg.user .body {
+  background: var(--user-bg); color: var(--user-ink); border-radius: 18px 18px 5px 18px;
+  padding: 10px 15px; max-width: min(86%, 540px); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.msg.eco { display: flex; gap: 12px; align-items: flex-start; }
+.avatar { flex: none; width: 30px; height: 30px; min-width: 30px; aspect-ratio: 1 / 1; border-radius: 9px; object-fit: cover; object-position: center; margin-top: 2px; }
+.col { flex: 1; min-width: 0; }
+.msg.eco .body { overflow-wrap: anywhere; min-width: 0; }
+.body p { margin: 0 0 .8em; }
+.body p:last-child, .body ul:last-child, .body ol:last-child, .body pre:last-child { margin-bottom: 0; }
+.body ul, .body ol { margin: 0 0 .8em; padding-left: 1.3em; }
+.body li { margin-bottom: .25em; }
+.body code { font-family: var(--font-mono); font-size: .88em; background: var(--code-bg); border-radius: 5px; padding: .1em .38em; }
+.body pre { margin: 0 0 .8em; background: var(--code-bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; overflow-x: auto; }
+.body pre code { background: none; padding: 0; font-size: .84rem; line-height: 1.6; }
+.body .katex { font-size: 1.05em; }
+.body .katex-display { margin: .9em 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+
+.sources {
+  margin-top: 10px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; display: flex; flex-direction: column; gap: 4px; font-size: .82rem;
+}
+.sources .st { font-family: var(--font-mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.sources a { color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
+.sources a:hover { text-decoration: underline; }
+.council { margin-top: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 8px 12px; font-size: .88rem; }
+.council summary { cursor: pointer; color: var(--muted); font-size: .82rem; }
+.council .op { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.council .on { font-family: var(--font-mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin-bottom: 4px; }
+
+.tools { display: flex; gap: 14px; align-items: center; margin-top: 6px; }
+.tools button { font: inherit; font-size: .78rem; background: none; border: none; color: var(--muted); cursor: pointer; padding: 2px 0; transition: color .2s; }
+.tools button:hover { color: var(--accent); }
+.tools button.speaking { color: var(--accent); font-weight: 500; }
+.note { font-size: .85rem; color: var(--danger); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; animation: rise .3s var(--ease); }
+.note button { font: inherit; font-size: .82rem; font-weight: 500; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.note button:hover { border-color: var(--accent); color: var(--accent); }
+.soft { font-size: .85rem; color: var(--muted); margin-top: 6px; }
+
+.dots { display: inline-flex; gap: 5px; padding: 10px 0; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: .35; animation: pulse 1.1s infinite ease-in-out; }
+.dots i:nth-child(2) { animation-delay: .15s; }
+.dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes pulse { 0%, 80%, 100% { opacity: .25; transform: scale(.85); } 40% { opacity: 1; transform: scale(1); } }
+
+/* Escritura */
+footer { flex: none; padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
+footer .wrap { padding-top: 8px; }
+.tiers {
+  position: relative; display: grid; grid-template-columns: repeat(3, 1fr);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 3px; width: 240px; max-width: 100%; margin: 0 auto 8px; transition: opacity .25s;
+}
+.tiers.off { opacity: .4; pointer-events: none; }
+.tiers .pill {
+  position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / 3);
+  background: var(--accent); border-radius: 999px; z-index: 0;
+  transition: transform .45s cubic-bezier(.3, 1.2, .5, 1);
+}
+.tiers button {
+  position: relative; z-index: 1; background: none; border: none; font: inherit; font-size: .8rem; font-weight: 500;
+  padding: 5px 4px; color: var(--muted); cursor: pointer; transition: color .25s;
+}
+.tiers button:hover { color: var(--ink); }
+.tiers button[aria-checked="true"] { color: var(--accent-ink); }
+
+.opts { display: flex; justify-content: center; gap: 8px; margin: 0 auto 8px; flex-wrap: wrap; }
+.opt {
+  font: inherit; font-size: .78rem; display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--muted); cursor: pointer;
+  transition: color .2s, border-color .2s, background .2s;
+}
+.opt:hover { color: var(--accent); border-color: var(--accent); }
+.opt[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+.langwrap {
+  display: inline-flex; align-items: center; gap: 6px; padding: 0 6px 0 11px;
+  border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted);
+  transition: color .2s, border-color .2s, background .2s; cursor: pointer;
+}
+.langwrap:hover, .langwrap:focus-within { color: var(--accent); border-color: var(--accent); }
+.langwrap.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.langwrap select {
+  font: inherit; font-size: .78rem; color: inherit; background: transparent; border: none;
+  padding: 5px 2px; cursor: pointer; max-width: 150px; text-overflow: ellipsis;
+}
+.langwrap select option { color: var(--ink); background: var(--surface); }
+
+form {
+  display: flex; align-items: flex-end; gap: 4px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 20px; padding: 6px;
+  transition: border-color .25s, box-shadow .25s;
+}
+form:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
+textarea {
+  flex: 1; min-width: 0; resize: none; border: none; outline: none; background: transparent; color: var(--ink);
+  font: inherit; line-height: 1.5; padding: 9px 6px; max-height: 160px; transition: height .12s ease-out;
+}
+textarea::placeholder { color: var(--muted); }
+textarea:focus-visible { outline: none; }
+.mic { flex: none; width: 40px; height: 40px; border-radius: 14px; }
+.mic.rec { background: var(--danger); color: #fff; animation: recpulse 1.2s infinite; }
+@keyframes recpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(180, 49, 31, .5); } 50% { box-shadow: 0 0 0 8px rgba(180, 49, 31, 0); } }
+.send {
+  flex: none; width: 40px; height: 40px; border: none; border-radius: 14px;
+  background: var(--accent); color: var(--accent-ink); cursor: pointer; display: grid; place-items: center;
+  transition: transform .15s, opacity .25s, background .2s;
+}
+.send:active:not(:disabled) { transform: scale(.92); }
+.send:disabled { opacity: .35; cursor: default; }
+.send.stop { background: var(--ink); color: var(--bg); }
+.fine { margin: 8px 4px 0; font-size: .72rem; color: var(--muted); text-align: center; }
+
+/* Historial */
+.scrim { position: fixed; inset: 0; z-index: 20; background: rgba(8, 14, 20, .45); opacity: 0; pointer-events: none; transition: opacity .3s; }
+.scrim.open { opacity: 1; pointer-events: auto; }
+.side {
+  position: fixed; top: 0; bottom: 0; left: 0; z-index: 30; width: min(320px, 88vw);
+  display: flex; flex-direction: column; gap: 10px; background: var(--surface); border-right: 1px solid var(--line);
+  padding: 14px 12px 12px; padding-top: max(14px, env(safe-area-inset-top, 0px));
+  transform: translateX(-102%); visibility: hidden;
+  transition: transform .35s var(--ease), visibility 0s linear .35s;
+  box-shadow: 8px 0 30px rgba(0, 0, 0, .12);
+}
+.side.open { transform: none; visibility: visible; transition: transform .35s var(--ease); }
+.side-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px; }
+.side-head h2 { margin: 0; font-family: var(--font-display); font-size: 1.2rem; letter-spacing: -0.02em; }
+.newchat {
+  font: inherit; font-size: .9rem; font-weight: 500; text-align: left; background: var(--accent); color: var(--accent-ink);
+  border: none; border-radius: 12px; padding: 10px 14px; cursor: pointer; transition: transform .15s;
+}
+.newchat:active { transform: scale(.98); }
+#search {
+  width: 100%; font: inherit; font-size: .9rem; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; transition: border-color .2s;
+}
+#search:focus { border-color: var(--accent); outline: none; }
+#search::placeholder { color: var(--muted); }
+.list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; margin: 0 -4px; padding: 0 4px; }
+.item { display: flex; align-items: center; gap: 2px; border-radius: 12px; animation: rise .3s var(--ease); transition: background .15s; }
+.item:hover { background: var(--bg); }
+.item.active { background: var(--bg); box-shadow: inset 3px 0 0 var(--accent); }
+.item .open { flex: 1; min-width: 0; text-align: left; background: none; border: none; font: inherit; color: var(--ink); padding: 9px 6px 9px 12px; cursor: pointer; }
+.item .t { display: block; font-size: .9rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item .t.loading { color: var(--muted); font-weight: 400; animation: shimmer 1.4s ease-in-out infinite; }
+@keyframes shimmer { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+.item .m { display: block; font-size: .72rem; color: var(--muted); }
+.acts { display: flex; flex: none; padding-right: 2px; }
+.acts button {
+  width: 30px; height: 30px; display: grid; place-items: center; background: none; border: none; border-radius: 8px;
+  color: var(--muted); cursor: pointer; transition: color .2s, background .2s;
+}
+.acts button:hover { color: var(--accent); background: var(--surface); }
+.acts button.del:hover { color: var(--danger); }
+.empty { margin: 14px 8px; font-size: .85rem; color: var(--muted); }
+.side-note { margin: 0; padding: 0 4px; font-size: .72rem; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  .chip { opacity: 1; }
+  main { scroll-behavior: auto; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <button type="button" class="ibtn" id="menuBtn" aria-label="Abrir historial de conversaciones" title="Historial">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <img src="logo.png" alt="Logo de Ekovozia" class="logo" width="40" height="40">
+      <h1>Ekovozia</h1>
+    </div>
+    <div class="actions">
+      <button type="button" class="ibtn" id="voiceToggle" aria-pressed="false" aria-label="Leer las respuestas en voz alta" title="Leer las respuestas en voz alta" hidden>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button type="button" class="ibtn" id="reset" aria-label="Nueva conversación" title="Nueva conversación" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="scrim"></div>
+<aside class="side" id="side" aria-label="Historial de conversaciones" inert>
+  <div class="side-head">
+    <h2>Conversaciones</h2>
+    <button type="button" class="ibtn" id="sideClose" aria-label="Cerrar historial" style="width:32px;height:32px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <button type="button" class="newchat" id="newChat">+ Nueva conversación</button>
+  <input type="search" id="search" placeholder="Buscar en las conversaciones…" aria-label="Buscar conversaciones" autocomplete="off">
+  <div class="list" id="list"></div>
+  <p class="side-note">Se guardan solo en este navegador (máximo 50).</p>
+</aside>
+
+<main id="scroll">
+  <div class="wrap" id="chat">
+    <section class="hello" id="hello">
+      <img src="logo.png" alt="" class="hero" width="72" height="72">
+      <h2>Pregúntame lo que quieras.</h2>
+      <p>Soy Ekovozia, tu asistente de IA. Escribe o háblame con el micrófono en más de 60 idiomas, pega un enlace para que lo lea, activa «Web» para buscar con fuentes, y si quieres, te leo las respuestas en voz alta.</p>
+      <div class="chips" id="chips"></div>
+      <button type="button" class="shuffle" id="shuffle">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Otras ideas
+      </button>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="tiers" id="tiers" role="radiogroup" aria-label="Versión de Ekovozia">
+      <span class="pill" id="pill" aria-hidden="true"></span>
+      <button type="button" role="radio" data-tier="basic" aria-checked="false" title="Rápido y ligero">Basic</button>
+      <button type="button" role="radio" data-tier="medium" aria-checked="false" title="Equilibrado">Medium</button>
+      <button type="button" role="radio" data-tier="pro" aria-checked="true" title="El más listo, algo más lento">Pro</button>
+    </div>
+    <div class="opts">
+      <button type="button" class="opt" id="optWeb" aria-pressed="false" title="Buscar en internet y citar las fuentes">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" stroke="currentColor" stroke-width="2"/></svg>
+        Web
+      </button>
+      <button type="button" class="opt" id="optCouncil" aria-pressed="false" title="Consulta a las 3 IAs y combina sus respuestas (más lento, gasta más cupo)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="8" cy="9" r="3" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="10" r="2.5" stroke="currentColor" stroke-width="2"/><path d="M2 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 15.2c.6-.2 1.3-.3 2-.3 2.8 0 5 2.2 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Consejo de IAs
+      </button>
+      <label class="langwrap" id="langWrap" title="Idioma de las respuestas, del micrófono y de la voz">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h8M8 3v2M5.5 5c.5 3 2.5 5.5 5 7M11 5c-.5 3-3 6-6.5 8M13 20l4-10 4 10M14.5 16.5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <select id="lang" aria-label="Idioma de las respuestas, del micrófono y de la voz"></select>
+      </label>
+    </div>
+    <form id="form" autocomplete="off">
+      <button type="button" class="ibtn mic" id="mic" aria-label="Grabar audio" title="Grabar audio">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3" stroke="currentColor" stroke-width="2"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <textarea id="input" rows="1" placeholder="Escribe tu mensaje o pega un enlace…" aria-label="Mensaje para Ekovozia"></textarea>
+      <button type="submit" class="send" id="send" aria-label="Enviar mensaje" disabled>
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 14.5V3.5M9 3.5L4 8.5M9 3.5L14 8.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </form>
+    <p class="fine" id="fine">Ekovozia puede equivocarse. Comprueba los datos importantes.</p>
+    <p class="fine" style="margin-top:2px"><a href="/acerca#privacidad" style="color:inherit">Privacidad</a> · <a href="#" id="cookieLink" style="color:inherit">Cookies</a></p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var RULES = "Eres Ekovozia, un asistente de IA que vive en una página web. " +
+    "Responde en el idioma que use la persona (por defecto, español). Sé claro, directo y útil, sin rodeos. " +
+    "Formato permitido: párrafos cortos, listas con guiones o números, **negrita**, `código` en línea y bloques de código con ```. " +
+    "Para fórmulas matemáticas usa LaTeX: \\( ... \\) en línea y $$ ... $$ en bloque. " +
+    "No uses encabezados ni tablas. Si no sabes algo, dilo. No puedes recordar otras conversaciones.";
+
+  var TITLE_RULES = "Tu única tarea es escribir un título muy corto (de 2 a 5 palabras) que resuma de qué trata una conversación. " +
+    "Usa el mismo idioma que la conversación. Responde SOLO con el título, sin comillas, sin punto final y sin explicaciones.";
+
+  var POOL = [
+    "Explícame la relatividad como si tuviera 12 años",
+    "Ayúdame a redactar un correo para pedir un día libre",
+    "Escribe una función en Python que ordene una lista de diccionarios",
+    "Resume en tres puntos qué es la inflación",
+    "Dame una receta fácil con lo que tenga en la nevera",
+    "¿Cómo funciona un agujero negro?",
+    "Ayúdame a preparar una entrevista de trabajo",
+    "Tradúceme una frase al inglés y explícame los matices",
+    "Cuéntame un dato curioso que casi nadie conozca",
+    "Dame un plan de estudio para aprender programación",
+    "¿Qué diferencia hay entre clima y tiempo?",
+    "Escribe un poema corto sobre el mar",
+    "Ayúdame a elegir un nombre para mi proyecto",
+    "Explícame qué es una API con un ejemplo sencillo",
+    "Organiza mi semana de estudio con 2 horas al día",
+    "Dame ideas para un regalo de cumpleaños",
+    "¿Cómo puedo mejorar mi concentración?",
+    "Corrige este texto y mejóralo: «yo quiero ir a la tienda para comprar»",
+    "Explícame qué es una hoja de cálculo y para qué sirve",
+    "Cuéntame la historia de la imprenta en un minuto",
+    "Escribe un chiste de programadores",
+    "¿Cómo se hace un buen currículum?",
+    "Dame cinco consejos para dormir mejor",
+    "Explícame cómo funciona internet paso a paso",
+    "Enséñame a saludar y presentarme en japonés",
+    "Explain how a rainbow forms in simple words",
+    "Aide-moi à écrire un message poli pour annuler un rendez-vous"
+  ];
+
+  /* 60 idiomas: código, nombre en su propio idioma */
+  var LANGS = [
+    ["es", "Español"], ["en", "English"], ["fr", "Français"], ["de", "Deutsch"], ["it", "Italiano"],
+    ["pt", "Português"], ["ca", "Català"], ["eu", "Euskara"], ["gl", "Galego"], ["nl", "Nederlands"],
+    ["sv", "Svenska"], ["da", "Dansk"], ["no", "Norsk"], ["fi", "Suomi"], ["is", "Íslenska"],
+    ["pl", "Polski"], ["cs", "Čeština"], ["sk", "Slovenčina"], ["hu", "Magyar"], ["ro", "Română"],
+    ["bg", "Български"], ["el", "Ελληνικά"], ["ru", "Русский"], ["uk", "Українська"], ["sr", "Српски"],
+    ["hr", "Hrvatski"], ["sl", "Slovenščina"], ["lt", "Lietuvių"], ["lv", "Latviešu"], ["et", "Eesti"],
+    ["tr", "Türkçe"], ["ar", "العربية"], ["he", "עברית"], ["fa", "فارسی"], ["ur", "اردو"],
+    ["hi", "हिन्दी"], ["bn", "বাংলা"], ["ta", "தமிழ்"], ["te", "తెలుగు"], ["mr", "मराठी"],
+    ["gu", "ગુજરાતી"], ["pa", "ਪੰਜਾਬੀ"], ["ne", "नेपाली"], ["th", "ไทย"], ["vi", "Tiếng Việt"],
+    ["id", "Bahasa Indonesia"], ["ms", "Bahasa Melayu"], ["tl", "Filipino"], ["zh", "中文"], ["ja", "日本語"],
+    ["ko", "한국어"], ["sw", "Kiswahili"], ["af", "Afrikaans"], ["am", "አማርኛ"], ["ha", "Hausa"],
+    ["yo", "Yorùbá"], ["cy", "Cymraeg"], ["ka", "ქართული"], ["hy", "Հայերեն"], ["kk", "Қазақша"]
+  ];
+
+  /* Palabras muy comunes para reconocer idiomas con alfabeto latino */
+  var STOP = {
+    es: "el la de que y en los las un una es por con para no se su al lo como pero qué cómo más muy está esto esta también porque",
+    en: "the and of to in is that it for with as was on are this be at by not you have from or what how why can your",
+    fr: "le la les des et est une un du de que qui dans pour pas sur au avec ce il elle vous nous je tu ne se en comment pourquoi plus",
+    de: "der die das und ist nicht ein eine zu den mit für auf ich sie es von dem im wie warum auch sich aber wir",
+    it: "il lo la gli le di che e è un una per con non sono come più del della questo perché anche io tu si ma",
+    pt: "o a os as de que e é um uma para com não em se por mais como foi mas você são isso também porque",
+    ca: "el la els les de que i és un una per amb no es com més però això també perquè molt del al",
+    nl: "de het een en van is dat niet te op voor met zijn ik je ze er maar ook als dit wat hoe waarom",
+    sv: "och att det som en är på för med inte av den till har jag du vi men om så hur varför",
+    da: "og at det en er på for med ikke af den til har jeg du vi men om så hvordan hvorfor",
+    no: "og å det som en er på for med ikke av den til har jeg du vi men om så hvordan hvorfor",
+    pl: "i w nie to się na jest z do że jak co ale czy dla po od są tak jego tego dlaczego",
+    cs: "a v se na je to že s z do pro jak ale ne by už tak jsou co proč který",
+    sk: "a je v sa na to že s z do pre ako ale nie sú čo prečo",
+    ro: "și în de la cu nu este un o pe că care mai sau pentru dar cum ce din acest foarte",
+    tr: "ve bir bu da de için ile çok ne gibi ama daha var mı değil nasıl neden olarak",
+    id: "yang dan di ke dari ini itu untuk dengan tidak adalah pada akan juga ada bagaimana mengapa saya",
+    vi: "và của là có không một những được cho trong này với các để tôi bạn như thế nào tại sao",
+    fi: "ja on ei että se oli hän mutta kun myös tai niin kuin miten miksi",
+    hu: "a az és hogy nem is egy van de ez azt mint vagy miért hogyan",
+    hr: "i je u da se na su za ne to s kao od sam ali kako zašto",
+    af: "die en van is nie dat het in om te vir op met sy hy ons maar hoe waarom",
+    sw: "na ya wa kwa ni za katika la kuwa hii pia sana lakini jinsi nini",
+    tl: "ang ng sa na at ay ito ko mo para hindi may kung bakit paano"
+  };
+  var STOPSETS = {};
+  Object.keys(STOP).forEach(function (k) {
+    var o = {};
+    STOP[k].split(" ").forEach(function (w) { o[w] = 1; });
+    STOPSETS[k] = o;
+  });
+
+  var TIERS = { basic: { index: 0 }, medium: { index: 1 }, pro: { index: 2 } };
+
+  var PAGE_VERSION = "web 3.2";
+  var ENDPOINT = "https://eco.x-mayor.workers.dev";
+  var MAX_REC_MS = 120000;
+  var STORE_KEY = "eco-chats";
+  var MAX_CHATS = 50;
+  var DEFAULT_TITLE = "Conversación nueva";
+
+  function $(id) { return document.getElementById(id); }
+  var chat = $("chat"), scroller = $("scroll"), hello = $("hello"), chips = $("chips"), shuffleBtn = $("shuffle");
+  var form = $("form"), input = $("input"), sendBtn = $("send"), resetBtn = $("reset"), fine = $("fine");
+  var tiersEl = $("tiers"), pill = $("pill"), micBtn = $("mic"), voiceToggle = $("voiceToggle");
+  var menuBtn = $("menuBtn"), side = $("side"), scrim = $("scrim"), sideClose = $("sideClose");
+  var newChatBtn = $("newChat"), search = $("search"), listEl = $("list");
+  var optWeb = $("optWeb"), optCouncil = $("optCouncil"), langEl = $("lang"), langWrap = $("langWrap");
+
+  var sample = null, turns = [], busy = false, ctl = null, epoch = 0, tier = "pro";
+  var recorder = null, recChunks = [], recStream = null, recTimer = null, recDiscard = false, transcribing = false;
+  var currentId = null, chats = [], titling = {};
+  var webOn = false, councilOn = false, langSel = "auto";
+
+  var ICON_SEND = sendBtn.innerHTML;
+  var ICON_STOP = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"/></svg>';
+  var ICON_MIC = micBtn.innerHTML;
+  var ICON_EDIT = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+  var ICON_DOWN = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_TRASH = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M10 7V4h4v3m-8 0l1 13h10l1-13M10 11v6m4-6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  /* ---------- Formato del texto (negrita, código, fórmulas) ---------- */
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function tex(src, display) {
+    if (window.katex) {
+      try { return window.katex.renderToString(src, { displayMode: display, throwOnError: false }); } catch (e) {}
+    }
+    return "<code>" + esc(src) + "</code>";
+  }
+  function inline(s) {
+    s = esc(s);
+    s = s.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+    s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+    return s;
+  }
+  function md(text) {
+    var maths = [];
+    function stash(src, display) {
+      maths.push(tex(src, display));
+      return "\u0001" + (maths.length - 1) + "\u0001";
+    }
+    var out = [];
+    String(text).split("```").forEach(function (part, i) {
+      if (i % 2 === 1) {
+        var nl = part.indexOf("\n");
+        var code = nl > -1 ? part.slice(nl + 1) : part;
+        out.push("<pre><code>" + esc(code.replace(/\n$/, "")) + "</code></pre>");
+        return;
+      }
+      part = part
+        .replace(/\$\$([\s\S]+?)\$\$/g, function (m, a) { return stash(a, true); })
+        .replace(/\\\[([\s\S]+?)\\\]/g, function (m, a) { return stash(a, true); })
+        .replace(/\\\(([\s\S]+?)\\\)/g, function (m, a) { return stash(a, false); })
+        .replace(/(^|[^\\$\w])\$([^$\n]+?)\$(?![\w$])/g, function (m, pre, a) {
+          if (/^\s|\s$/.test(a) || /^\d/.test(a)) return m;
+          return pre + stash(a, false);
+        });
+      part.split(/\n{2,}/).forEach(function (block) {
+        block = block.trim();
+        if (!block) return;
+        var lines = block.split("\n");
+        if (lines.length === 1 && /^#{1,6}\s+/.test(lines[0])) {
+          out.push("<p><strong>" + inline(lines[0].replace(/^#{1,6}\s+/, "")) + "</strong></p>");
+        } else if (lines.every(function (l) { return /^\s*[-*•]\s+/.test(l); })) {
+          out.push("<ul>" + lines.map(function (l) { return "<li>" + inline(l.replace(/^\s*[-*•]\s+/, "")) + "</li>"; }).join("") + "</ul>");
+        } else if (lines.every(function (l) { return /^\s*\d+[.)]\s+/.test(l); })) {
+          out.push("<ol>" + lines.map(function (l) { return "<li>" + inline(l.replace(/^\s*\d+[.)]\s+/, "")) + "</li>"; }).join("") + "</ol>");
+        } else {
+          out.push("<p>" + lines.map(inline).join("<br>") + "</p>");
+        }
+      });
+    });
+    return out.join("").replace(/\u0001(\d+)\u0001/g, function (m, i) { return maths[+i]; });
+  }
+  function setBody(el, text) { el._raw = text; el.innerHTML = md(text); }
+
+  window.__katexReady = function () {
+    Array.prototype.forEach.call(document.querySelectorAll(".msg.eco .body, .council .body"), function (b) {
+      if (b._raw) b.innerHTML = md(b._raw);
+    });
+  };
+
+  function nearBottom() { return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 140; }
+  function toBottom() { scroller.scrollTop = scroller.scrollHeight; }
+
+  /* ---------- Sugerencias aleatorias ---------- */
+  function renderChips() {
+    var pool = POOL.slice();
+    for (var i = pool.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+    }
+    chips.textContent = "";
+    pool.slice(0, 4).forEach(function (s, k) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.style.animationDelay = (k * 70) + "ms";
+      b.textContent = s;
+      b.addEventListener("click", function () { send(s); });
+      chips.appendChild(b);
+    });
+  }
+  shuffleBtn.addEventListener("click", renderChips);
+
+  /* ---------- Detección del idioma de un texto (para la voz) ---------- */
+  function detectLang(text) {
+    if (langSel !== "auto") return langSel;
+    var t = String(text)
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$/g, " ")
+      .replace(/https?:\/\/\S+/g, " ")
+      .slice(0, 700);
+    var total = (t.match(/\p{L}/gu) || []).length;
+    if (!total) return "";
+    function share(re) { return (t.match(re) || []).length / total; }
+
+    if (share(/[\p{Script=Hiragana}\p{Script=Katakana}]/gu) > 0.1) return "ja";
+    if (share(/\p{Script=Hangul}/gu) > 0.3) return "ko";
+    if (share(/\p{Script=Han}/gu) > 0.3) return "zh";
+    var scripts = [
+      ["th", /\p{Script=Thai}/gu], ["he", /\p{Script=Hebrew}/gu], ["bn", /\p{Script=Bengali}/gu],
+      ["ta", /\p{Script=Tamil}/gu], ["te", /\p{Script=Telugu}/gu], ["gu", /\p{Script=Gujarati}/gu],
+      ["pa", /\p{Script=Gurmukhi}/gu], ["am", /\p{Script=Ethiopic}/gu], ["ka", /\p{Script=Georgian}/gu],
+      ["hy", /\p{Script=Armenian}/gu], ["el", /\p{Script=Greek}/gu], ["hi", /\p{Script=Devanagari}/gu]
+    ];
+    for (var i = 0; i < scripts.length; i++) if (share(scripts[i][1]) > 0.3) return scripts[i][0];
+    if (share(/\p{Script=Arabic}/gu) > 0.3) {
+      if (/[ٹڈڑںے]/.test(t)) return "ur";
+      if (/[پچژگ]/.test(t)) return "fa";
+      return "ar";
+    }
+    if (share(/\p{Script=Cyrillic}/gu) > 0.3) {
+      if (/[әғқңұүһ]/i.test(t)) return "kk";
+      if (/[ђћљњџ]/i.test(t)) return "sr";
+      if (/[їєґі]/i.test(t)) return "uk";
+      if (/[ыэё]/i.test(t)) return "ru";
+      if (/ъ/i.test(t)) return "bg";
+      return "ru";
+    }
+    var words = t.toLowerCase().match(/[\p{L}'’]+/gu) || [];
+    var best = "", bestN = 0;
+    Object.keys(STOPSETS).forEach(function (k) {
+      var n = 0;
+      for (var j = 0; j < words.length; j++) if (STOPSETS[k][words[j]]) n++;
+      if (n > bestN) { bestN = n; best = k; }
+    });
+    return bestN >= 3 ? best : "";
+  }
+
+  /* ---------- Voz (la IA te habla) ---------- */
+  var synth = window.speechSynthesis;
+  var canSpeak = !!synth && typeof window.SpeechSynthesisUtterance !== "undefined";
+  var voices = [], speakToken = 0, speakingBtn = null, autoRead = false, warnedVoice = {};
+  var VOICE_ALIAS = { no: ["no", "nb"], tl: ["fil", "tl"], he: ["he", "iw"], id: ["id", "in"] };
+
+  function loadVoices() { try { voices = synth.getVoices() || []; } catch (e) { voices = []; } }
+  function pickVoice(code) {
+    if (!code) return null;
+    var prefixes = VOICE_ALIAS[code] || [code];
+    var best = null, bestScore = 0;
+    voices.forEach(function (v) {
+      var lang = (v.lang || "").toLowerCase().replace("_", "-");
+      if (prefixes.indexOf(lang.split("-")[0]) === -1) return;
+      var score = 1;
+      if (code === "es" && lang === "es-es") score += 2;
+      if (code === "en" && (lang === "en-gb" || lang === "en-us")) score += 1;
+      if (/natural|online|neural|premium|enhanced/i.test(v.name)) score += 3;
+      if (/google/i.test(v.name)) score += 1;
+      if (score > bestScore) { best = v; bestScore = score; }
+    });
+    return best;
+  }
+  function cleanForSpeech(text, lang) {
+    var es = lang === "es" || !lang;
+    return text
+      .replace(/```[\s\S]*?(```|$)/g, es ? " Aquí hay un bloque de código. " : ". ")
+      .replace(/\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$/g, es ? " Aquí hay una fórmula. " : ". ")
+      .replace(/\\\([\s\S]*?\\\)/g, es ? " una fórmula " : " ")
+      .replace(/`([^`]*)`/g, "$1")
+      .replace(/\*\*([^*]*)\*\*/g, "$1")
+      .replace(/https?:\/\/\S+/g, es ? " enlace " : " ")
+      .replace(/\[\d+\]/g, "")
+      .replace(/^\s*[-*•]\s+/gm, "")
+      .replace(/^\s*\d+[.)]\s+/gm, "")
+      .replace(/[*_#>]/g, "")
+      .replace(/\s*\n+\s*/g, ". ")
+      .replace(/\.\s*\./g, ".")
+      .trim();
+  }
+  function chunkText(text) {
+    var sentences = text.match(/[^.!?¡¿;:。！？।]+[.!?;:。！？।]*\s*/g) || [text];
+    var chunks = [], cur = "";
+    sentences.forEach(function (s) {
+      while (s.length > 220) {
+        if (cur) { chunks.push(cur); cur = ""; }
+        chunks.push(s.slice(0, 200));
+        s = s.slice(200);
+      }
+      if ((cur + s).length > 180 && cur) { chunks.push(cur); cur = s; } else cur += s;
+    });
+    if (cur.trim()) chunks.push(cur);
+    return chunks;
+  }
+  function setSpeakBtn(btn, on) {
+    if (!btn) return;
+    btn.textContent = on ? "Parar" : "Escuchar";
+    btn.classList.toggle("speaking", on);
+  }
+  function stopSpeaking() {
+    speakToken++;
+    if (canSpeak) { try { synth.cancel(); } catch (e) {} }
+    setSpeakBtn(speakingBtn, false);
+    speakingBtn = null;
+  }
+  function speak(text, btn) {
+    if (!canSpeak) return;
+    stopSpeaking();
+    var lang = detectLang(text);
+    var clean = cleanForSpeech(text, lang);
+    if (!clean) return;
+    var token = ++speakToken;
+    var chunks = chunkText(clean);
+    var voice = pickVoice(lang);
+    if (lang && !voice && voices.length && !warnedVoice[lang]) {
+      warnedVoice[lang] = true;
+      addNote("Tu dispositivo no tiene una voz instalada para este idioma (" + lang + "), así que sonará con la voz por defecto.");
+    }
+    speakingBtn = btn || null;
+    setSpeakBtn(speakingBtn, true);
+    var idx = 0;
+    function next() {
+      if (token !== speakToken) return;
+      if (idx >= chunks.length) { setSpeakBtn(speakingBtn, false); speakingBtn = null; return; }
+      var u = new SpeechSynthesisUtterance(chunks[idx++]);
+      u.lang = voice ? voice.lang : (lang || "");
+      if (voice) u.voice = voice;
+      u.rate = 1;
+      u.onend = next;
+      u.onerror = function () { if (token === speakToken) { setSpeakBtn(speakingBtn, false); speakingBtn = null; } };
+      synth.speak(u);
+    }
+    setTimeout(next, 60);
+  }
+  if (canSpeak) {
+    loadVoices();
+    if (synth.addEventListener) synth.addEventListener("voiceschanged", loadVoices);
+    else synth.onvoiceschanged = loadVoices;
+    voiceToggle.hidden = false;
+    try { autoRead = localStorage.getItem("eco-voice") === "1"; } catch (e) {}
+    var paintVoice = function () {
+      voiceToggle.setAttribute("aria-pressed", autoRead ? "true" : "false");
+      voiceToggle.title = autoRead ? "Voz activada: leeré las respuestas" : "Leer las respuestas en voz alta";
+    };
+    paintVoice();
+    voiceToggle.addEventListener("click", function () {
+      autoRead = !autoRead;
+      paintVoice();
+      try { localStorage.setItem("eco-voice", autoRead ? "1" : "0"); } catch (e) {}
+      if (!autoRead) stopSpeaking();
+      else { try { var u = new SpeechSynthesisUtterance(" "); u.volume = 0; synth.speak(u); } catch (e) {} }
+    });
+    window.addEventListener("pagehide", function () { try { synth.cancel(); } catch (e) {} });
+  }
+
+  /* ---------- Selector de idioma ---------- */
+  (function () {
+    var o = document.createElement("option");
+    o.value = "auto";
+    o.textContent = "Idioma: automático";
+    langEl.appendChild(o);
+    LANGS.forEach(function (l) {
+      var x = document.createElement("option");
+      x.value = l[0];
+      x.textContent = l[1];
+      langEl.appendChild(x);
+    });
+    try {
+      var sv = localStorage.getItem("ekovozia-lang");
+      if (sv && LANGS.some(function (l) { return l[0] === sv; })) langSel = sv;
+    } catch (e) {}
+    langEl.value = langSel;
+    langWrap.classList.toggle("on", langSel !== "auto");
+    langEl.addEventListener("change", function () {
+      langSel = langEl.value;
+      langWrap.classList.toggle("on", langSel !== "auto");
+      try { localStorage.setItem("ekovozia-lang", langSel); } catch (e) {}
+      stopSpeaking();
+      input.focus();
+    });
+  })();
+
+  /* ---------- Historial ---------- */
+  function loadAll() {
+    try {
+      var a = JSON.parse(localStorage.getItem(STORE_KEY) || "[]");
+      return Array.isArray(a) ? a.filter(function (c) { return c && c.id && Array.isArray(c.turns); }) : [];
+    } catch (e) { return []; }
+  }
+  function persist() {
+    chats.sort(function (a, b) { return (b.updated || 0) - (a.updated || 0); });
+    chats = chats.slice(0, MAX_CHATS);
+    for (;;) {
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(chats)); return; }
+      catch (e) { if (chats.length <= 1) return; chats.pop(); }
+    }
+  }
+  function findChat(id) {
+    for (var i = 0; i < chats.length; i++) if (chats[i].id === id) return chats[i];
+    return null;
+  }
+  function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function norm(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+  function fmtDate(ts) {
+    var d = new Date(ts), n = new Date();
+    if (d.toDateString() === n.toDateString()) return d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  }
+  function packTurns() {
+    return turns.map(function (t) {
+      var o = { role: t.role, content: t.content };
+      if (t.sources && t.sources.length) o.sources = t.sources;
+      return o;
+    });
+  }
+
+  function saveCurrent() {
+    if (!currentId || !turns.length) return;
+    chats = loadAll();
+    var c = findChat(currentId);
+    if (!c) {
+      c = { id: currentId, title: DEFAULT_TITLE, titled: false, created: Date.now(), updated: 0, turns: [] };
+      chats.push(c);
+    }
+    c.turns = packTurns();
+    c.updated = Date.now();
+    persist();
+    renderList();
+  }
+
+  /* Título automático: lo escribe la IA según de qué va la conversación */
+  function cleanTitle(s) {
+    s = String(s || "").split("\n")[0];
+    s = s.replace(/^t[ií]tulo\s*:\s*/i, "");
+    s = s.replace(/^["'«“”*#\s-]+/, "").replace(/["'»“”*.\s]+$/, "").replace(/\s+/g, " ").trim();
+    if (!s || s.length > 60) return "";
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  function genTitle(id) {
+    if (titling[id]) return;
+    chats = loadAll();
+    var c = findChat(id);
+    if (!c || c.titled) return;
+    var u = null, a = null;
+    c.turns.forEach(function (t) {
+      if (!u && t.role === "user") u = t.content;
+      else if (u && !a && t.role === "assistant") a = t.content;
+    });
+    if (!u || !a) return;
+    titling[id] = true;
+    renderList();
+    var prompt = "Conversación:\n\nUsuario: " + u.replace(/https?:\/\/\S+/g, "enlace").slice(0, 500) + "\n\nAsistente: " + a.slice(0, 500) + "\n\nEscribe el título.";
+    fetch(ENDPOINT, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ tier: "basic", system: TITLE_RULES, messages: [{ role: "user", content: prompt }] })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      var t = cleanTitle(d && d.text);
+      if (!t) return;
+      chats = loadAll();
+      var c2 = findChat(id);
+      if (c2 && !c2.titled) { c2.title = t; c2.titled = true; persist(); }
+    }).catch(function () {}).then(function () {
+      delete titling[id];
+      renderList();
+    });
+  }
+
+  function renderList() {
+    var q = norm(search.value.trim());
+    var items = chats.slice().sort(function (a, b) { return (b.updated || 0) - (a.updated || 0); });
+    if (q) {
+      items = items.filter(function (c) {
+        return norm(c.title).indexOf(q) > -1 || c.turns.some(function (t) { return norm(t.content).indexOf(q) > -1; });
+      });
+    }
+    listEl.textContent = "";
+    if (!items.length) {
+      var p = document.createElement("p");
+      p.className = "empty";
+      p.textContent = q ? "Sin resultados." : "Todavía no hay conversaciones. Escribe un mensaje y aparecerá aquí.";
+      listEl.appendChild(p);
+      return;
+    }
+    items.forEach(function (c) {
+      var row = document.createElement("div");
+      row.className = "item" + (c.id === currentId ? " active" : "");
+
+      var open = document.createElement("button");
+      open.type = "button";
+      open.className = "open";
+      var t = document.createElement("span");
+      t.className = "t";
+      var loading = !c.titled && titling[c.id];
+      if (loading) { t.classList.add("loading"); t.textContent = "Creando título…"; }
+      else t.textContent = c.title;
+      var m = document.createElement("span");
+      m.className = "m";
+      m.textContent = fmtDate(c.updated) + " · " + c.turns.length + (c.turns.length === 1 ? " mensaje" : " mensajes");
+      open.appendChild(t);
+      open.appendChild(m);
+      open.addEventListener("click", function () { openChat(c.id); });
+
+      var acts = document.createElement("div");
+      acts.className = "acts";
+      function mk(icon, label, cls, fn) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.innerHTML = icon;
+        b.title = label;
+        b.setAttribute("aria-label", label + ": " + c.title);
+        if (cls) b.className = cls;
+        b.addEventListener("click", function (e) { e.stopPropagation(); fn(); });
+        acts.appendChild(b);
+      }
+      mk(ICON_EDIT, "Renombrar", "", function () { renameChat(c.id); });
+      mk(ICON_DOWN, "Exportar a texto", "", function () { exportChat(c.id); });
+      mk(ICON_TRASH, "Borrar", "del", function () { deleteChat(c.id); });
+
+      row.appendChild(open);
+      row.appendChild(acts);
+      listEl.appendChild(row);
+    });
+  }
+
+  function renameChat(id) {
+    chats = loadAll();
+    var c = findChat(id);
+    if (!c) return;
+    var name = window.prompt("Nuevo nombre de la conversación:", c.title);
+    if (name === null) return;
+    name = name.replace(/\s+/g, " ").trim().slice(0, 80);
+    if (!name) return;
+    c.title = name;
+    c.titled = true;
+    persist();
+    renderList();
+  }
+
+  function deleteChat(id) {
+    chats = loadAll();
+    var c = findChat(id);
+    if (!c) return;
+    if (!window.confirm("¿Borrar «" + c.title + "»? No se puede deshacer.")) return;
+    chats = chats.filter(function (x) { return x.id !== id; });
+    persist();
+    if (id === currentId) reset(); else renderList();
+  }
+
+  function exportChat(id) {
+    chats = loadAll();
+    var c = findChat(id);
+    if (!c) return;
+    var lines = [
+      c.title,
+      "Exportado el " + new Date().toLocaleString("es-ES") + " · Ekovozia " + PAGE_VERSION,
+      "========================================",
+      ""
+    ];
+    c.turns.forEach(function (t) {
+      lines.push(t.role === "user" ? "TÚ:" : "EKOVOZIA:");
+      lines.push(t.content);
+      if (t.sources && t.sources.length) {
+        lines.push("Fuentes:");
+        t.sources.forEach(function (s, i) { lines.push("  [" + (i + 1) + "] " + (s.title || "") + " - " + s.url); });
+      }
+      lines.push("");
+    });
+    var blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var slug = norm(c.title).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "conversacion";
+    a.href = url;
+    a.download = "ekovozia-" + slug + ".txt";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  function openSide() {
+    chats = loadAll();
+    renderList();
+    side.removeAttribute("inert");
+    side.classList.add("open");
+    scrim.classList.add("open");
+    menuBtn.setAttribute("aria-expanded", "true");
+    setTimeout(function () { sideClose.focus(); }, 60);
+  }
+  function closeSide() {
+    side.classList.remove("open");
+    scrim.classList.remove("open");
+    side.setAttribute("inert", "");
+    menuBtn.setAttribute("aria-expanded", "false");
+  }
+  menuBtn.addEventListener("click", function () { if (side.classList.contains("open")) closeSide(); else openSide(); });
+  sideClose.addEventListener("click", function () { closeSide(); menuBtn.focus(); });
+  scrim.addEventListener("click", closeSide);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && side.classList.contains("open")) { closeSide(); menuBtn.focus(); } });
+  search.addEventListener("input", renderList);
+  newChatBtn.addEventListener("click", function () {
+    if (turns.length || busy) reset();
+    closeSide();
+    input.focus();
+  });
+
+  /* ---------- Selector de versión y opciones ---------- */
+  function setTier(t, save) {
+    if (!TIERS[t]) t = "pro";
+    tier = t;
+    pill.style.transform = "translateX(" + (TIERS[t].index * 100) + "%)";
+    Array.prototype.forEach.call(tiersEl.querySelectorAll("button"), function (b) {
+      b.setAttribute("aria-checked", b.getAttribute("data-tier") === t ? "true" : "false");
+    });
+    if (save) { try { localStorage.setItem("ekovozia-tier", t); } catch (e) {} }
+  }
+  Array.prototype.forEach.call(tiersEl.querySelectorAll("button"), function (b) {
+    b.addEventListener("click", function () { setTier(b.getAttribute("data-tier"), true); input.focus(); });
+  });
+  var savedTier = null;
+  try { savedTier = localStorage.getItem("ekovozia-tier"); } catch (e) {}
+  setTier(savedTier || "pro", false);
+
+  function paintOpts() {
+    optWeb.setAttribute("aria-pressed", webOn ? "true" : "false");
+    optCouncil.setAttribute("aria-pressed", councilOn ? "true" : "false");
+    tiersEl.classList.toggle("off", councilOn);
+  }
+  try { webOn = localStorage.getItem("eco-web") === "1"; councilOn = localStorage.getItem("eco-council") === "1"; } catch (e) {}
+  paintOpts();
+  optWeb.addEventListener("click", function () {
+    webOn = !webOn; paintOpts();
+    try { localStorage.setItem("eco-web", webOn ? "1" : "0"); } catch (e) {}
+    input.focus();
+  });
+  optCouncil.addEventListener("click", function () {
+    councilOn = !councilOn; paintOpts();
+    try { localStorage.setItem("eco-council", councilOn ? "1" : "0"); } catch (e) {}
+    input.focus();
+  });
+
+  /* ---------- Mensajes ---------- */
+  function addUser(text) {
+    var m = document.createElement("div");
+    m.className = "msg user";
+    var b = document.createElement("div");
+    b.className = "body";
+    b.textContent = text;
+    m.appendChild(b);
+    chat.appendChild(m);
+    toBottom();
+  }
+
+  function buildEco() {
+    var row = document.createElement("div");
+    row.className = "msg eco";
+    var av = document.createElement("img");
+    av.className = "avatar";
+    av.src = "logo.png";
+    av.alt = "";
+    var col = document.createElement("div");
+    col.className = "col";
+    var b = document.createElement("div");
+    b.className = "body";
+    col.appendChild(b);
+    row.appendChild(av);
+    row.appendChild(col);
+    chat.appendChild(row);
+    return { row: row, box: col, body: b };
+  }
+
+  function addEco() {
+    var eco = buildEco();
+    eco.body.innerHTML = '<span class="dots" role="status" aria-label="Ekovozia está pensando"><i></i><i></i><i></i></span>';
+    toBottom();
+    return eco;
+  }
+
+  function safeUrl(u) { return /^https?:\/\//i.test(String(u || "")) ? u : ""; }
+
+  function addSources(eco, list) {
+    if (!list || !list.length) return;
+    var box = document.createElement("div");
+    box.className = "sources";
+    var h = document.createElement("div");
+    h.className = "st";
+    h.textContent = "Fuentes";
+    box.appendChild(h);
+    list.forEach(function (s, i) {
+      var href = safeUrl(s.url);
+      if (!href) return;
+      var a = document.createElement("a");
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      var host = "";
+      try { host = new URL(href).hostname.replace(/^www\./, ""); } catch (e) {}
+      a.textContent = "[" + (i + 1) + "] " + (s.title || host) + (host ? " · " + host : "");
+      box.appendChild(a);
+    });
+    eco.box.appendChild(box);
+  }
+
+  function addOpinions(eco, ops) {
+    if (!ops || !ops.length) return;
+    var d = document.createElement("details");
+    d.className = "council";
+    var s = document.createElement("summary");
+    s.textContent = "Ver qué dijo cada IA (" + ops.length + ")";
+    d.appendChild(s);
+    ops.forEach(function (o) {
+      var w = document.createElement("div");
+      w.className = "op";
+      var n = document.createElement("div");
+      n.className = "on";
+      n.textContent = o.name;
+      var b = document.createElement("div");
+      b.className = "body";
+      setBody(b, o.text || "");
+      w.appendChild(n);
+      w.appendChild(b);
+      d.appendChild(w);
+    });
+    eco.box.appendChild(d);
+  }
+
+  function addEcoStatic(text, list) {
+    var eco = buildEco();
+    setBody(eco.body, text);
+    addSources(eco, list);
+    addCopy(eco, text);
+  }
+
+  function addNote(message, retry) {
+    var note = document.createElement("div");
+    note.className = "note";
+    var msg = document.createElement("span");
+    msg.textContent = message;
+    note.appendChild(msg);
+    if (retry) {
+      var rb = document.createElement("button");
+      rb.type = "button";
+      rb.textContent = "Reintentar";
+      rb.addEventListener("click", function () { note.remove(); retry(); });
+      note.appendChild(rb);
+    }
+    chat.appendChild(note);
+    toBottom();
+  }
+
+  function setBusy(v) {
+    busy = v;
+    sendBtn.innerHTML = v ? ICON_STOP : ICON_SEND;
+    sendBtn.classList.toggle("stop", v);
+    sendBtn.setAttribute("aria-label", v ? "Detener respuesta" : "Enviar mensaje");
+    sendBtn.type = v ? "button" : "submit";
+    refresh();
+  }
+  function refresh() {
+    sendBtn.disabled = !sample || (!busy && !input.value.trim());
+    resetBtn.disabled = turns.length === 0 && !busy;
+    micBtn.disabled = busy || transcribing;
+  }
+
+  function errorCopy(code) {
+    switch (code) {
+      case "rate_limited": return "Vas muy rápido o has llegado al límite de uso. Espera un momento o prueba otra versión de Ekovozia.";
+      case "refused": return "Ekovozia no puede responder a ese mensaje. Prueba a plantearlo de otra forma.";
+      case "prompt_too_large": return "La conversación es demasiado larga. Empieza una nueva.";
+      default: return "No se pudo completar la respuesta. Inténtalo de nuevo.";
+    }
+  }
+
+  function addCopy(eco, text) {
+    var t = document.createElement("div");
+    t.className = "tools";
+    var c = document.createElement("button");
+    c.type = "button";
+    c.textContent = "Copiar";
+    c.addEventListener("click", function () {
+      var done = function () { c.textContent = "Copiado"; setTimeout(function () { c.textContent = "Copiar"; }, 1500); };
+      var fail = function () {
+        var r = document.createRange();
+        r.selectNodeContents(eco.body);
+        var s = window.getSelection();
+        s.removeAllRanges(); s.addRange(r);
+        c.textContent = "Selecciona y copia";
+      };
+      try { navigator.clipboard.writeText(text).then(done, fail); } catch (e) { fail(); }
+    });
+    t.appendChild(c);
+    var sp = null;
+    if (canSpeak) {
+      sp = document.createElement("button");
+      sp.type = "button";
+      sp.textContent = "Escuchar";
+      sp.addEventListener("click", function () {
+        if (speakingBtn === sp) stopSpeaking(); else speak(text, sp);
+      });
+      t.appendChild(sp);
+    }
+    eco.box.appendChild(t);
+    return sp;
+  }
+
+  function run() {
+    if (busy || !sample) return;
+    var myEpoch = epoch;
+    var eco = addEco();
+    var local = new AbortController();
+    ctl = local;
+    setBusy(true);
+
+    var payload = [{ role: "user", content: RULES }].concat(turns.slice(-30).map(function (t) { return { role: t.role, content: t.content }; }));
+    sample(payload, {
+      signal: local.signal,
+      onText: function (u) {
+        if (myEpoch !== epoch) return;
+        var stick = nearBottom();
+        setBody(eco.body, u.text);
+        if (stick) toBottom();
+      }
+    }).then(function (res) {
+      if (myEpoch !== epoch) return;
+      turns.push({ role: "assistant", content: res.text, sources: res.sources || [] });
+      saveCurrent();
+      setBody(eco.body, res.text);
+      if (res.truncated) {
+        var n = document.createElement("div");
+        n.className = "soft";
+        n.textContent = "La respuesta se cortó por longitud. Pídeme que continúe.";
+        eco.box.appendChild(n);
+      }
+      if (res.warning) {
+        var w = document.createElement("div");
+        w.className = "soft";
+        w.textContent = res.warning;
+        eco.box.appendChild(w);
+      }
+      addSources(eco, res.sources);
+      addOpinions(eco, res.opinions);
+      var sp = addCopy(eco, res.text);
+      if (autoRead && canSpeak) speak(res.text, sp);
+      genTitle(currentId);
+      toBottom();
+    }).catch(function (e) {
+      if (myEpoch !== epoch) return;
+      var code = e && e.code;
+      var partial = e && e.text;
+      if (partial && code !== "refused") {
+        setBody(eco.body, partial);
+        turns.push({ role: "assistant", content: partial });
+        saveCurrent();
+      } else {
+        eco.row.remove();
+      }
+      if (code === "cancelled") {
+        if (partial) {
+          var s = document.createElement("div");
+          s.className = "soft";
+          s.textContent = "Respuesta detenida.";
+          chat.appendChild(s);
+        }
+        return;
+      }
+      addNote(errorCopy(code) + (e && e.detail ? " [" + e.detail + "]" : ""), code !== "prompt_too_large" ? function () {
+        if (turns.length && turns[turns.length - 1].role === "assistant") turns.push({ role: "user", content: "Continúa." });
+        run();
+      } : null);
+    }).then(function () {
+      if (myEpoch !== epoch) return;
+      ctl = null;
+      setBusy(false);
+      input.focus();
+    });
+  }
+
+  /* ---------- Audio (tú le hablas) ---------- */
+  function stopStream() {
+    if (recStream) { recStream.getTracks().forEach(function (t) { t.stop(); }); recStream = null; }
+  }
+  function micIdle() {
+    micBtn.classList.remove("rec");
+    micBtn.innerHTML = ICON_MIC;
+    micBtn.setAttribute("aria-label", "Grabar audio");
+    micBtn.title = "Grabar audio";
+    refresh();
+  }
+  function transcribe(blob, type) {
+    transcribing = true;
+    var oldPh = input.placeholder;
+    input.placeholder = "Transcribiendo audio…";
+    refresh();
+    fetch(ENDPOINT + "/transcribe" + (langSel !== "auto" ? "?lang=" + encodeURIComponent(langSel) : ""), {
+      method: "POST",
+      headers: { "content-type": type || "audio/webm" },
+      body: blob
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (!r.ok || typeof d.text !== "string") {
+          throw new Error("HTTP " + r.status + (d.error ? " " + d.error : "") + (d.detail ? ": " + d.detail : ""));
+        }
+        if (!d.text) { addNote("No se entendió nada en el audio."); return; }
+        try { if (window.EkoTrack) EkoTrack.event("voice"); } catch (e) {}
+        input.value = (input.value ? input.value + " " : "") + d.text;
+        grow();
+        input.focus();
+      });
+    }).catch(function (err) {
+      addNote("No se pudo transcribir el audio. [" + String(err && err.message ? err.message : err).slice(0, 300) + "]");
+    }).then(function () {
+      transcribing = false;
+      input.placeholder = oldPh;
+      refresh();
+    });
+  }
+  function startRec() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === "undefined") {
+      addNote("Tu navegador no permite grabar audio.");
+      return;
+    }
+    stopSpeaking();
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      recStream = stream;
+      recChunks = [];
+      recDiscard = false;
+      var mime = "";
+      ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"].some(function (m) {
+        if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) { mime = m; return true; }
+        return false;
+      });
+      recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      recorder.ondataavailable = function (e) { if (e.data && e.data.size) recChunks.push(e.data); };
+      recorder.onstop = function () {
+        clearTimeout(recTimer);
+        var type = (recorder && recorder.mimeType) || mime || "audio/webm";
+        stopStream();
+        micIdle();
+        recorder = null;
+        if (recDiscard || !recChunks.length) return;
+        var blob = new Blob(recChunks, { type: type });
+        recChunks = [];
+        if (blob.size < 1000) { addNote("El audio es demasiado corto."); return; }
+        transcribe(blob, type);
+      };
+      recorder.start();
+      micBtn.classList.add("rec");
+      micBtn.innerHTML = ICON_STOP;
+      micBtn.setAttribute("aria-label", "Parar grabación");
+      micBtn.title = "Parar grabación";
+      recTimer = setTimeout(function () { if (recorder && recorder.state === "recording") recorder.stop(); }, MAX_REC_MS);
+    }).catch(function () {
+      stopStream();
+      addNote("No se pudo acceder al micrófono. Permite el acceso en el navegador e inténtalo de nuevo.");
+    });
+  }
+  micBtn.addEventListener("click", function () {
+    if (recorder && recorder.state === "recording") { recorder.stop(); return; }
+    if (busy || transcribing) return;
+    startRec();
+  });
+
+  /* ---------- Envío y control ---------- */
+  function send(text) {
+    text = (text || "").trim();
+    if (!text || busy || !sample) return;
+    stopSpeaking();
+    hello.hidden = true;
+    if (!currentId) currentId = newId();
+    turns.push({ role: "user", content: text });
+    saveCurrent();
+    addUser(text);
+    input.value = "";
+    grow();
+    run();
+  }
+
+  function grow() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 160) + "px";
+    refresh();
+  }
+
+  function clearView() {
+    epoch++;
+    stopSpeaking();
+    if (ctl) { try { ctl.abort(); } catch (e) {} ctl = null; }
+    if (recorder && recorder.state === "recording") { recDiscard = true; recorder.stop(); }
+    busy = false;
+    sendBtn.innerHTML = ICON_SEND;
+    sendBtn.classList.remove("stop");
+    sendBtn.setAttribute("aria-label", "Enviar mensaje");
+    sendBtn.type = "submit";
+    Array.prototype.slice.call(chat.children).forEach(function (n) { if (n !== hello) n.remove(); });
+  }
+
+  function reset() {
+    clearView();
+    turns = [];
+    currentId = null;
+    renderChips();
+    hello.hidden = false;
+    input.value = "";
+    grow();
+    renderList();
+    input.focus();
+  }
+
+  function openChat(id) {
+    chats = loadAll();
+    var c = findChat(id);
+    if (!c) { renderList(); return; }
+    clearView();
+    turns = c.turns.map(function (t) { return { role: t.role, content: t.content, sources: t.sources || [] }; });
+    currentId = id;
+    hello.hidden = true;
+    input.value = "";
+    scroller.style.scrollBehavior = "auto";
+    turns.forEach(function (t) {
+      if (t.role === "user") addUser(t.content); else addEcoStatic(t.content, t.sources);
+    });
+    toBottom();
+    scroller.style.scrollBehavior = "";
+    grow();
+    renderList();
+    closeSide();
+    input.focus();
+    genTitle(id);
+  }
+
+  form.addEventListener("submit", function (e) { e.preventDefault(); send(input.value); });
+  sendBtn.addEventListener("click", function () { if (busy && ctl) ctl.abort(); });
+  input.addEventListener("input", grow);
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(input.value); }
+  });
+  resetBtn.addEventListener("click", reset);
+
+  /* ---------- Respuesta completa con aparición fluida (Consejo o plan B) ---------- */
+  var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function reveal(text, onText, signal) {
+    return new Promise(function (resolve, reject) {
+      if (REDUCED) { onText({ text: text }); resolve(); return; }
+      var start = performance.now();
+      var dur = Math.min(4500, Math.max(600, text.length * 8));
+      var shown = 0;
+      function frame(now) {
+        if (signal && signal.aborted) { reject({ code: "cancelled", text: text.slice(0, shown) }); return; }
+        var p = Math.min(1, (now - start) / dur);
+        var eased = 1 - Math.pow(1 - p, 1.8);
+        var n = Math.max(shown, Math.floor(text.length * eased));
+        if (n !== shown) { shown = n; onText({ text: text.slice(0, shown) }); }
+        if (p < 1) requestAnimationFrame(frame);
+        else { onText({ text: text }); resolve(); }
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  function setFine(version, model) {
+    fine.textContent = "Ekovozia puede equivocarse. Comprueba los datos importantes. · " + PAGE_VERSION + (version ? " · " + version : "") + (model ? " · " + model : "");
+  }
+
+  /* ---------- Lectura de la respuesta en streaming ---------- */
+  function readStream(r, opts) {
+    return new Promise(function (resolve, reject) {
+      var reader = r.body.getReader();
+      var dec = new TextDecoder();
+      var buf = "", text = "", meta = null, streamErr = "", pending = false;
+
+      function paint() { pending = false; opts.onText({ text: text }); }
+      function schedule() { if (!pending) { pending = true; requestAnimationFrame(paint); } }
+      function handle(line) {
+        line = line.trim();
+        if (!line) return;
+        var j;
+        try { j = JSON.parse(line); } catch (e) { return; }
+        if (j.d) { text += j.d; schedule(); }
+        else if (j.done) { meta = j; }
+        else if (j.error) { streamErr = String(j.error); }
+      }
+      function finish() {
+        if (buf.trim()) handle(buf);
+        if (meta) {
+          setFine(meta.version, meta.model);
+          opts.onText({ text: text });
+          resolve({
+            text: text,
+            truncated: !!meta.truncated,
+            sources: Array.isArray(meta.sources) ? meta.sources : [],
+            opinions: [],
+            warning: meta.warning || ""
+          });
+          return;
+        }
+        if (text) { reject({ code: "upstream_error", detail: streamErr || "La respuesta se cortó", text: text }); return; }
+        reject({ code: "upstream_error", detail: streamErr || "respuesta vacía" });
+      }
+      function pump() {
+        reader.read().then(function (chunk) {
+          if (chunk.done) { finish(); return; }
+          buf += dec.decode(chunk.value, { stream: true });
+          var i;
+          while ((i = buf.indexOf("\n")) > -1) {
+            handle(buf.slice(0, i));
+            buf = buf.slice(i + 1);
+          }
+          pump();
+        }, function (err) {
+          var aborted = (err && err.name === "AbortError") || (opts.signal && opts.signal.aborted);
+          reject({
+            code: aborted ? "cancelled" : "upstream_error",
+            detail: aborted ? "" : "Conexión cortada: " + (err && err.message ? err.message : err),
+            text: text
+          });
+        });
+      }
+      pump();
+    });
+  }
+
+  sample = function (payload, opts) {
+    try { if (window.EkoTrack) EkoTrack.event("msg", { tier: tier, web: webOn, council: councilOn }); } catch (e) {}
+    return fetch(ENDPOINT, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        tier: tier,
+        search: webOn,
+        council: councilOn,
+        stream: !councilOn,
+        lang: langSel === "auto" ? "" : langSel,
+        system: payload[0].content,
+        messages: payload.slice(1)
+      }),
+      signal: opts.signal
+    }).then(function (r) {
+      var ct = r.headers.get("content-type") || "";
+      if (r.ok && ct.indexOf("ndjson") > -1 && r.body) return readStream(r, opts);
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (d.version) setFine(d.version, d.model);
+        if (!r.ok || !d.text) {
+          throw {
+            code: r.status === 429 ? "rate_limited" : "upstream_error",
+            detail: ("HTTP " + r.status + (d.error ? " " + d.error : "") + (d.detail ? ": " + d.detail : "")).slice(0, 300)
+          };
+        }
+        return reveal(d.text, opts.onText || function () {}, opts.signal).then(function () {
+          return {
+            text: d.text,
+            truncated: !!d.truncated,
+            sources: Array.isArray(d.sources) ? d.sources : [],
+            opinions: Array.isArray(d.opinions) ? d.opinions : [],
+            warning: d.warning || ""
+          };
+        });
+      });
+    }, function (err) {
+      throw {
+        code: err && err.name === "AbortError" ? "cancelled" : "upstream_error",
+        detail: err && err.name !== "AbortError" ? "Sin conexión con el Worker: " + (err.message || err) : ""
+      };
+    });
+  };
+
+  renderChips();
+  chats = loadAll();
+  renderList();
+  refresh();
+})();
+</script>
+<script src="/analytics.js" defer></script>
+</body>
+</html>
