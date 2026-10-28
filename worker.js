@@ -1,5 +1,6 @@
 const ALLOWED_ORIGIN = "https://ekovozia.pages.dev";
-const VERSION = "worker 3.4";
+const VERSION = "worker 3.7";
+const MAX_FAILS = 4; /* intentos fallidos de clave antes de bloquear */
 
 const TIERS = {
   basic: "openai/gpt-oss-20b",
@@ -304,12 +305,42 @@ const SCHEMA = [
   "CREATE INDEX IF NOT EXISTS s_last ON sessions(last_ts)",
   "CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, sid TEXT, vid TEXT, type TEXT, path TEXT, data TEXT)",
   "CREATE INDEX IF NOT EXISTS e_ts ON events(ts)",
+  "CREATE TABLE IF NOT EXISTS msgs (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, h TEXT, sid TEXT, text TEXT, country TEXT, city TEXT, dev TEXT)",
+  "CREATE INDEX IF NOT EXISTS m_ts ON msgs(ts)",
+  "CREATE TABLE IF NOT EXISTS blocks (h TEXT PRIMARY KEY, kind TEXT, text TEXT, ts INTEGER, ack INTEGER DEFAULT 0, country TEXT, city TEXT, dev TEXT)",
+  "CREATE TABLE IF NOT EXISTS bans (h TEXT PRIMARY KEY, fails INTEGER DEFAULT 0, banned INTEGER DEFAULT 0, first_ts INTEGER, last_ts INTEGER, banned_ts INTEGER DEFAULT 0, country TEXT, city TEXT, isp TEXT, ua TEXT)",
+];
+/* Columnas añadidas después: se intentan una vez y se ignora el error si ya existen */
+const MIGRATIONS = [
+  "ALTER TABLE sessions ADD COLUMN model TEXT DEFAULT ''",
+  "ALTER TABLE sessions ADD COLUMN osv TEXT DEFAULT ''",
+  "ALTER TABLE sessions ADD COLUMN bver TEXT DEFAULT ''",
+  "ALTER TABLE msgs ADD COLUMN cid TEXT DEFAULT ''",
 ];
 let schemaReady = false;
 async function ensureSchema(env) {
   if (schemaReady) return;
   await env.DB.batch(SCHEMA.map((q) => env.DB.prepare(q)));
+  for (const m of MIGRATIONS) {
+    try { await env.DB.prepare(m).run(); } catch (e) { /* la columna ya existe */ }
+  }
   schemaReady = true;
+}
+
+/* Nombres comerciales de algunos móviles (el navegador solo da el código del modelo) */
+const MODELS = {
+  "SM-A556": "Galaxy A55", "SM-A546": "Galaxy A54", "SM-A536": "Galaxy A53", "SM-A356": "Galaxy A35",
+  "SM-A346": "Galaxy A34", "SM-A256": "Galaxy A25", "SM-A156": "Galaxy A15",
+  "SM-S928": "Galaxy S24 Ultra", "SM-S926": "Galaxy S24+", "SM-S921": "Galaxy S24",
+  "SM-S918": "Galaxy S23 Ultra", "SM-S916": "Galaxy S23+", "SM-S911": "Galaxy S23",
+  "SM-S908": "Galaxy S22 Ultra", "SM-S906": "Galaxy S22+", "SM-S901": "Galaxy S22",
+  "SM-G998": "Galaxy S21 Ultra", "SM-G996": "Galaxy S21+", "SM-G991": "Galaxy S21",
+};
+function prettyModel(raw) {
+  const m = String(raw || "");
+  if (!/^[\w .+\-]{1,40}$/.test(m)) return "";
+  const name = MODELS[m.slice(0, 7).toUpperCase()];
+  return name ? name + " (" + m + ")" : m;
 }
 
 function parseUA(ua) {
@@ -332,7 +363,17 @@ function parseUA(ua) {
   let device = "Ordenador";
   if (/iPad|Tablet/.test(ua) || (/Android/.test(ua) && !/Mobile/.test(ua))) device = "Tablet";
   else if (/Mobi|iPhone|Android/.test(ua)) device = "Móvil";
-  return { bot, os, browser, device };
+  let bver = "";
+  const bm = ua.match(/(?:Edg|OPR|Firefox|FxiOS|CriOS|Chrome|SamsungBrowser)\/(\d+)/) || (browser === "Safari" ? ua.match(/Version\/(\d+)/) : null);
+  if (bm) bver = bm[1];
+  let osv = "";
+  if (os === "iOS") { const m = ua.match(/OS (\d+)[_.](\d+)/); if (m) osv = m[1] + "." + m[2]; }
+  else if (os === "Android") { const m = ua.match(/Android (\d+)/); if (m) osv = m[1]; }
+  return { bot, os, browser, device, bver, osv };
+}
+
+function ipId(env, ip) {
+  return shortHash((env.HASH_SALT || env.ADMIN_TOKEN || "ekovozia") + "|" + ip);
 }
 
 async function shortHash(s) {
@@ -368,18 +409,27 @@ async function recordTrack(request, env, ip) {
   const scr = /^\d{2,5}x\d{2,5}$/.test(String(b.scr || "")) ? String(b.scr) : "";
   const lang = /^[a-zA-Z-]{2,10}$/.test(String(b.lang || "")) ? String(b.lang) : "";
   const tz = /^[A-Za-z_\/+-]{1,40}$/.test(String(b.tz || "")) ? String(b.tz) : "";
-  const ipHash = await shortHash((env.HASH_SALT || env.ADMIN_TOKEN || "ekovozia") + "|" + ip);
+  const ipHash = await ipId(env, ip);
+  const model = prettyModel(b.mdl);
+  let osv = p.osv;
+  const pv = String(b.osv || "");
+  if (/^\d+(\.\d+){0,3}$/.test(pv)) {
+    const maj = parseInt(pv, 10);
+    if (p.os === "Windows") osv = maj >= 13 ? "11" : maj >= 1 ? "10" : osv;
+    else if (p.os === "Android" || p.os === "macOS" || p.os === "ChromeOS") osv = String(maj);
+  }
   await ensureSchema(env);
 
   const stmts = [
     env.DB.prepare(
-      "INSERT INTO sessions (sid,vid,first_ts,last_ts,dur,pages,msgs,voice,country,region,city,isp,tz,device,os,browser,screen,lang,ref,landing,ip_hash,recurrent) " +
-      "VALUES (?1,?2,?3,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21) " +
-      "ON CONFLICT(sid) DO UPDATE SET last_ts=?3, dur=MAX(dur,?4), pages=pages+?5, msgs=msgs+?6, voice=voice+?7"
+      "INSERT INTO sessions (sid,vid,first_ts,last_ts,dur,pages,msgs,voice,country,region,city,isp,tz,device,os,browser,screen,lang,ref,landing,ip_hash,recurrent,model,osv,bver) " +
+      "VALUES (?1,?2,?3,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24) " +
+      "ON CONFLICT(sid) DO UPDATE SET last_ts=?3, dur=MAX(dur,?4), pages=pages+?5, msgs=msgs+?6, voice=voice+?7, " +
+      "model=COALESCE(NULLIF(?22,''),model), osv=COALESCE(NULLIF(?23,''),osv), bver=COALESCE(NULLIF(?24,''),bver)"
     ).bind(
       sid, vid, now, act, type === "view" ? 1 : 0, type === "msg" ? 1 : 0, type === "voice" ? 1 : 0,
       String(cf.country || ""), String(cf.region || ""), String(cf.city || ""), String(cf.asOrganization || "").slice(0, 80),
-      tz, p.device, p.os, p.browser, scr, lang, ref, path, ipHash, b.ret === 1 ? 1 : 0
+      tz, p.device, p.os, p.browser, scr, lang, ref, path, ipHash, b.ret === 1 ? 1 : 0, model, osv || "", p.bver || ""
     ),
   ];
   if (type !== "ping") {
@@ -392,6 +442,7 @@ async function recordTrack(request, env, ip) {
     const old = now - 180 * 86400000;
     stmts.push(env.DB.prepare("DELETE FROM sessions WHERE last_ts < ?1").bind(old));
     stmts.push(env.DB.prepare("DELETE FROM events WHERE ts < ?1").bind(old));
+    stmts.push(env.DB.prepare("DELETE FROM bans WHERE banned = 0 AND last_ts < ?1").bind(now - 30 * 86400000));
   }
   await env.DB.batch(stmts);
   return 204;
@@ -414,7 +465,7 @@ async function adminStats(env, days) {
     top(unk("country")),
     top("CASE WHEN city='' THEN '(desconocido)' ELSE city || ' (' || country || ')' END"),
     top(unk("device")),
-    top(unk("os")),
+    top("os || CASE WHEN COALESCE(osv,'')<>'' THEN ' ' || osv ELSE '' END"),
     top(unk("browser")),
     top("COALESCE(NULLIF(ref,''),'Directo / sin origen')"),
     top(unk("lang")),
@@ -423,7 +474,11 @@ async function adminStats(env, days) {
     top(unk("isp")),
     q("SELECT COALESCE(NULLIF(json_extract(data,'$.tier'),''),'?') k, COUNT(*) n FROM events WHERE type='msg' AND ts >= ?1 GROUP BY k ORDER BY n DESC", since),
     q("SELECT COALESCE(SUM(json_extract(data,'$.web')),0) web, COALESCE(SUM(json_extract(data,'$.council')),0) council, COUNT(*) total FROM events WHERE type='msg' AND ts >= ?1", since),
-    q("SELECT sid, vid, first_ts, last_ts, dur, pages, msgs, voice, country, region, city, isp, tz, device, os, browser, screen, lang, ref, landing, ip_hash, recurrent FROM sessions ORDER BY last_ts DESC LIMIT 60"),
+    q("SELECT sid, vid, first_ts, last_ts, dur, pages, msgs, voice, country, region, city, isp, tz, device, os, browser, screen, lang, ref, landing, ip_hash, recurrent, model, osv, bver FROM sessions ORDER BY last_ts DESC LIMIT 60"),
+    q("SELECT h, fails, banned, first_ts, last_ts, banned_ts, country, city, isp, ua FROM bans ORDER BY banned DESC, last_ts DESC LIMIT 30"),
+    q("SELECT model k, COUNT(*) n FROM sessions WHERE first_ts >= ?1 AND COALESCE(model,'')<>'' GROUP BY k ORDER BY n DESC LIMIT 12", since),
+    q("SELECT id, ts, h, sid, cid, text, country, city, dev FROM msgs ORDER BY ts DESC LIMIT 500"),
+    q("SELECT h, kind, text, ts, ack, country, city, dev FROM blocks ORDER BY ts DESC LIMIT 50"),
   ]);
   const r = (i) => (out[i] && out[i].results) || [];
   const rows = (i) => r(i).map((x) => ({ k: x.k, n: x.n }));
@@ -447,7 +502,34 @@ async function adminStats(env, days) {
     tiers: rows(14),
     features: r(15)[0] || {},
     recent: r(16).map((x) => ({ ...x, vid: String(x.vid).slice(0, 6) })),
+    bans: r(17),
+    models: rows(18),
+    messages: r(19),
+    blocks: r(20),
   };
+}
+
+/* ---------- Moderación de usuarios (por huella de conexión) ---------- */
+async function modLookup(env, ip) {
+  if (!env.DB) return { h: "", blk: null };
+  try {
+    await ensureSchema(env);
+    const h = await ipId(env, ip);
+    const blk = await env.DB.prepare("SELECT kind, text, ack FROM blocks WHERE h = ?1").bind(h).first();
+    return { h, blk: blk || null };
+  } catch (e) {
+    return { h: "", blk: null }; /* si falla la base de datos, el chat sigue funcionando */
+  }
+}
+
+async function logMsg(env, h, sid, cid, text, cf, ua) {
+  try {
+    const p = parseUA(ua);
+    const now = Date.now();
+    await env.DB.prepare("INSERT INTO msgs (ts,h,sid,text,country,city,dev,cid) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)")
+      .bind(now, h, sid, text.slice(0, 2000), String((cf && cf.country) || ""), String((cf && cf.city) || ""), p.device + " · " + p.os + " · " + p.browser, cid).run();
+    if (Math.random() < 0.02) await env.DB.prepare("DELETE FROM msgs WHERE ts < ?1").bind(now - 30 * 86400000).run();
+  } catch (e) { /* no es crítico */ }
 }
 
 export default {
@@ -487,21 +569,81 @@ export default {
       return new Response(null, { status, headers: cors });
     }
 
-    /* Panel de administración: estadísticas protegidas por ADMIN_TOKEN */
-    if (path === "/admin/stats") {
+    /* Panel de administración: protegido por ADMIN_TOKEN, con bloqueo tras MAX_FAILS fallos */
+    if (path === "/admin/stats" || path === "/admin/bans" || path === "/admin/mod") {
       if (!hit(ADMIN_HITS, ip, 20)) return json({ error: "Demasiados intentos, espera un minuto" }, 429);
       if (!env.ADMIN_TOKEN) return json({ error: "Falta el secreto ADMIN_TOKEN en el Worker" }, 500);
-      const auth = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-      if (!safeEq(auth, env.ADMIN_TOKEN)) return json({ error: "Clave incorrecta" }, 401);
       if (!env.DB) return json({ error: "Falta la base de datos D1 (binding «DB») en el Worker" }, 500);
-      let b = {};
-      try { b = await request.json(); } catch {}
-      const days = [1, 7, 30, 90].includes(b.days) ? b.days : 7;
+      const BLOCKED = "Acceso bloqueado por sospecha de suplantación de identidad.";
       try {
+        await ensureSchema(env);
+        const now = Date.now();
+        const h = await ipId(env, ip);
+        const row = await env.DB.prepare("SELECT fails, banned, last_ts FROM bans WHERE h = ?1").bind(h).first();
+        if (row && row.banned) return json({ error: BLOCKED, banned: true }, 403);
+
+        const auth = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+        if (!safeEq(auth, env.ADMIN_TOKEN)) {
+          const cf = request.cf || {};
+          const p = parseUA(request.headers.get("user-agent"));
+          const fails = (row && now - row.last_ts < 3600000 ? row.fails : 0) + 1;
+          const ban = fails >= MAX_FAILS ? 1 : 0;
+          await env.DB.prepare(
+            "INSERT INTO bans (h,fails,banned,first_ts,last_ts,banned_ts,country,city,isp,ua) VALUES (?1,?2,?3,?4,?4,?5,?6,?7,?8,?9) " +
+            "ON CONFLICT(h) DO UPDATE SET fails=?2, banned=?3, last_ts=?4, banned_ts=CASE WHEN ?3=1 THEN ?4 ELSE banned_ts END, country=?6, city=?7, isp=?8, ua=?9"
+          ).bind(h, fails, ban, now, ban ? now : 0, String(cf.country || ""), String(cf.city || ""), String(cf.asOrganization || "").slice(0, 80), p.device + " · " + p.os + " · " + p.browser).run();
+          if (ban) return json({ error: BLOCKED, banned: true }, 403);
+          const left = MAX_FAILS - fails;
+          return json({ error: "Clave incorrecta. Te quedan " + left + (left === 1 ? " intento." : " intentos.") }, 401);
+        }
+        if (row) await env.DB.prepare("DELETE FROM bans WHERE h = ?1").bind(h).run();
+
+        let b = {};
+        try { b = await request.json(); } catch {}
+
+        if (path === "/admin/bans") {
+          if (b.action === "unban" && /^[a-f0-9]{16}$/.test(String(b.id || ""))) {
+            await env.DB.prepare("DELETE FROM bans WHERE h = ?1").bind(String(b.id)).run();
+          } else if (b.action === "unban_all") {
+            await env.DB.prepare("DELETE FROM bans").run();
+          } else {
+            return json({ error: "Acción no válida" }, 400);
+          }
+          return json({ ok: true });
+        }
+
+        if (path === "/admin/mod") {
+          const target = String(b.h || "");
+          if (!/^[a-f0-9]{16}$/.test(target)) return json({ error: "Usuario no válido" }, 400);
+          if (target === h) return json({ error: "No puedes sancionarte a ti mismo" }, 400);
+          const text = String(b.text || "").trim().slice(0, 300);
+          if (b.action === "clear") {
+            await env.DB.prepare("DELETE FROM blocks WHERE h = ?1").bind(target).run();
+            return json({ ok: true });
+          }
+          if (b.action !== "ban" && b.action !== "warn") return json({ error: "Acción no válida" }, 400);
+          if (b.action === "warn" && !text) return json({ error: "Escribe el texto del aviso" }, 400);
+          const m = await env.DB.prepare("SELECT country, city, dev FROM msgs WHERE h = ?1 ORDER BY ts DESC LIMIT 1").bind(target).first();
+          const s2 = m ? null : await env.DB.prepare("SELECT country, city, device || ' · ' || os || ' · ' || browser AS dev FROM sessions WHERE ip_hash = ?1 ORDER BY last_ts DESC LIMIT 1").bind(target).first();
+          const info = m || s2 || {};
+          await env.DB.prepare(
+            "INSERT INTO blocks (h,kind,text,ts,ack,country,city,dev) VALUES (?1,?2,?3,?4,0,?5,?6,?7) " +
+            "ON CONFLICT(h) DO UPDATE SET kind=?2, text=?3, ts=?4, ack=0, country=?5, city=?6, dev=?7"
+          ).bind(target, b.action, text, now, String(info.country || ""), String(info.city || ""), String(info.dev || "")).run();
+          return json({ ok: true });
+        }
+
+        const days = [1, 7, 30, 90].includes(b.days) ? b.days : 7;
         return json(await adminStats(env, days));
       } catch (e) {
         return json({ error: "Error de base de datos", detail: String(e && e.message ? e.message : e).slice(0, 300) }, 500);
       }
+    }
+
+    /* Moderación: usuarios suspendidos o con aviso pendiente */
+    const mod = await modLookup(env, ip);
+    if (mod.blk && mod.blk.kind === "ban") {
+      return json({ error: "Tu acceso a Ekovozia ha sido suspendido" + (mod.blk.text ? ". Motivo: " + mod.blk.text : ""), banned: true }, 403);
     }
 
     /* Audio -> texto (con idioma opcional) */
@@ -570,6 +712,20 @@ export default {
     if (system.indexOf("Eres Ekovozia") !== -1) system = STYLE;
     const lastUser = messages[messages.length - 1].content;
 
+    /* Moderación: registra el mensaje (30 días) y entrega el aviso pendiente, si lo hay */
+    let modWarning = "";
+    if (system === STYLE && env.DB && mod.h) {
+      const sidIn = /^[a-z0-9]{8,40}$/i.test(String(body.sid || "")) ? String(body.sid) : "";
+      const cidIn = /^[a-z0-9]{4,40}$/i.test(String(body.cid || "")) ? String(body.cid) : "";
+      ctx.waitUntil(logMsg(env, mod.h, sidIn, cidIn, lastUser, request.cf, request.headers.get("user-agent")));
+      if (mod.blk && mod.blk.kind === "warn" && !mod.blk.ack) {
+        modWarning = "⚠️ Aviso del administrador: " + mod.blk.text;
+        ctx.waitUntil((async () => {
+          try { await env.DB.prepare("UPDATE blocks SET ack = 1 WHERE h = ?1").bind(mod.h).run(); } catch (e) { /* no es crítico */ }
+        })());
+      }
+    }
+
     /* Contexto web: enlaces del mensaje y búsqueda opcional */
     const sources = [];
     let context = "";
@@ -603,6 +759,8 @@ export default {
         }
       }
     }
+
+    if (modWarning) warning = modWarning + (warning ? "\n" + warning : "");
 
     const today = new Date().toISOString().slice(0, 10);
     let system2 = system + "\n\nFecha de hoy: " + today + ".";
