@@ -1551,6 +1551,7 @@ textarea:focus-visible { outline: none; }
         lang: langSel === "auto" ? "" : langSel,
         sid: window.EkoTrack ? EkoTrack.sid() : "",
         cid: currentId || "",
+        token: window.EkoAccount ? EkoAccount.token() : "",
         system: payload[0].content,
         messages: payload.slice(1)
       }),
@@ -1591,5 +1592,6 @@ textarea:focus-visible { outline: none; }
 })();
 </script>
 <script src="/analytics.js" defer></script>
+<script src="/account.js" defer></script>
 </body>
 </html>

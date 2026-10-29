@@ -1,5 +1,5 @@
 const ALLOWED_ORIGIN = "https://ekovozia.pages.dev";
-const VERSION = "worker 3.7";
+const VERSION = "worker 3.8";
 const MAX_FAILS = 4; /* intentos fallidos de clave antes de bloquear */
 
 const TIERS = {
@@ -309,6 +309,8 @@ const SCHEMA = [
   "CREATE INDEX IF NOT EXISTS m_ts ON msgs(ts)",
   "CREATE TABLE IF NOT EXISTS blocks (h TEXT PRIMARY KEY, kind TEXT, text TEXT, ts INTEGER, ack INTEGER DEFAULT 0, country TEXT, city TEXT, dev TEXT)",
   "CREATE TABLE IF NOT EXISTS bans (h TEXT PRIMARY KEY, fails INTEGER DEFAULT 0, banned INTEGER DEFAULT 0, first_ts INTEGER, last_ts INTEGER, banned_ts INTEGER DEFAULT 0, country TEXT, city TEXT, isp TEXT, ua TEXT)",
+  "CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT, name_lc TEXT UNIQUE, salt TEXT, hash TEXT, created INTEGER, last_ts INTEGER, lat REAL, lon REAL, loc_ts INTEGER)",
+  "CREATE TABLE IF NOT EXISTS acc_sessions (th TEXT PRIMARY KEY, uid TEXT, ts INTEGER)",
 ];
 /* Columnas añadidas después: se intentan una vez y se ignora el error si ya existen */
 const MIGRATIONS = [
@@ -316,6 +318,7 @@ const MIGRATIONS = [
   "ALTER TABLE sessions ADD COLUMN osv TEXT DEFAULT ''",
   "ALTER TABLE sessions ADD COLUMN bver TEXT DEFAULT ''",
   "ALTER TABLE msgs ADD COLUMN cid TEXT DEFAULT ''",
+  "ALTER TABLE msgs ADD COLUMN uname TEXT DEFAULT ''",
 ];
 let schemaReady = false;
 async function ensureSchema(env) {
@@ -477,8 +480,9 @@ async function adminStats(env, days) {
     q("SELECT sid, vid, first_ts, last_ts, dur, pages, msgs, voice, country, region, city, isp, tz, device, os, browser, screen, lang, ref, landing, ip_hash, recurrent, model, osv, bver FROM sessions ORDER BY last_ts DESC LIMIT 60"),
     q("SELECT h, fails, banned, first_ts, last_ts, banned_ts, country, city, isp, ua FROM bans ORDER BY banned DESC, last_ts DESC LIMIT 30"),
     q("SELECT model k, COUNT(*) n FROM sessions WHERE first_ts >= ?1 AND COALESCE(model,'')<>'' GROUP BY k ORDER BY n DESC LIMIT 12", since),
-    q("SELECT id, ts, h, sid, cid, text, country, city, dev FROM msgs ORDER BY ts DESC LIMIT 500"),
+    q("SELECT id, ts, h, sid, cid, uname, text, country, city, dev FROM msgs ORDER BY ts DESC LIMIT 500"),
     q("SELECT h, kind, text, ts, ack, country, city, dev FROM blocks ORDER BY ts DESC LIMIT 50"),
+    q("SELECT name, created, last_ts, lat, lon, loc_ts FROM users ORDER BY last_ts DESC LIMIT 200"),
   ]);
   const r = (i) => (out[i] && out[i].results) || [];
   const rows = (i) => r(i).map((x) => ({ k: x.k, n: x.n }));
@@ -506,6 +510,7 @@ async function adminStats(env, days) {
     models: rows(18),
     messages: r(19),
     blocks: r(20),
+    users: r(21),
   };
 }
 
@@ -522,14 +527,116 @@ async function modLookup(env, ip) {
   }
 }
 
-async function logMsg(env, h, sid, cid, text, cf, ua) {
+async function logMsg(env, h, sid, cid, uname, text, cf, ua) {
   try {
     const p = parseUA(ua);
     const now = Date.now();
-    await env.DB.prepare("INSERT INTO msgs (ts,h,sid,text,country,city,dev,cid) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)")
-      .bind(now, h, sid, text.slice(0, 2000), String((cf && cf.country) || ""), String((cf && cf.city) || ""), p.device + " · " + p.os + " · " + p.browser, cid).run();
+    await env.DB.prepare("INSERT INTO msgs (ts,h,sid,text,country,city,dev,cid,uname) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)")
+      .bind(now, h, sid, text.slice(0, 2000), String((cf && cf.country) || ""), String((cf && cf.city) || ""), p.device + " · " + p.os + " · " + p.browser, cid, uname).run();
     if (Math.random() < 0.02) await env.DB.prepare("DELETE FROM msgs WHERE ts < ?1").bind(now - 30 * 86400000).run();
   } catch (e) { /* no es crítico */ }
+}
+
+/* ---------- Cuentas de usuario (solo usuario y contraseña, sin correo) ---------- */
+const ACC_STRICT = new Map();
+const ACC_LOOSE = new Map();
+const USER_RE = /^[a-zA-Z0-9_.-]{3,20}$/;
+const SESSION_MS = 90 * 86400000;
+
+function toHex(buf) { return Array.from(new Uint8Array(buf)).map((x) => x.toString(16).padStart(2, "0")).join(""); }
+function randHex(n) { const a = new Uint8Array(n); crypto.getRandomValues(a); return toHex(a); }
+async function sha256Hex(s) { return toHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))); }
+async function pbkdf2Hex(pass, saltHex) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveBits"]);
+  const salt = new Uint8Array(saltHex.match(/../g).map((x) => parseInt(x, 16)));
+  return toHex(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: 100000 }, key, 256));
+}
+async function accUser(env, token) {
+  try {
+    token = String(token || "");
+    if (!env.DB || !/^[a-f0-9]{64}$/.test(token)) return null;
+    await ensureSchema(env);
+    const th = await sha256Hex(token);
+    const row = await env.DB.prepare("SELECT u.id id, u.name name, u.lat lat FROM acc_sessions s JOIN users u ON u.id = s.uid WHERE s.th = ?1 AND s.ts > ?2")
+      .bind(th, Date.now() - SESSION_MS).first();
+    return row || null;
+  } catch (e) { return null; }
+}
+async function newSession(env, uid) {
+  const token = randHex(32);
+  await env.DB.prepare("INSERT INTO acc_sessions (th,uid,ts) VALUES (?1,?2,?3)").bind(await sha256Hex(token), uid, Date.now()).run();
+  if (Math.random() < 0.05) await env.DB.prepare("DELETE FROM acc_sessions WHERE ts < ?1").bind(Date.now() - SESSION_MS).run();
+  return token;
+}
+
+async function accountApi(path, request, env, ip, json) {
+  const strict = path === "/account/register" || path === "/account/login";
+  if (!hit(strict ? ACC_STRICT : ACC_LOOSE, ip, strict ? 15 : 60)) return json({ error: "Demasiados intentos, espera un minuto" }, 429);
+  await ensureSchema(env);
+  let b = {};
+  try { b = await request.json(); } catch {}
+  const now = Date.now();
+
+  if (path === "/account/register") {
+    const name = String(b.user || "").trim();
+    const pass = String(b.pass || "");
+    if (!USER_RE.test(name)) return json({ error: "El usuario debe tener de 3 a 20 caracteres: letras, números, punto, guion o guion bajo." }, 400);
+    if (pass.length < 6 || pass.length > 100) return json({ error: "La contraseña debe tener entre 6 y 100 caracteres." }, 400);
+    const lc = name.toLowerCase();
+    const exists = await env.DB.prepare("SELECT 1 x FROM users WHERE name_lc = ?1").bind(lc).first();
+    if (exists) return json({ error: "Ese usuario ya existe, prueba con otro." }, 409);
+    const salt = randHex(16), id = randHex(8);
+    const hash = await pbkdf2Hex(pass, salt);
+    try {
+      await env.DB.prepare("INSERT INTO users (id,name,name_lc,salt,hash,created,last_ts) VALUES (?1,?2,?3,?4,?5,?6,?6)").bind(id, name, lc, salt, hash, now).run();
+    } catch (e) {
+      return json({ error: "Ese usuario ya existe, prueba con otro." }, 409);
+    }
+    return json({ ok: true, user: name, token: await newSession(env, id), loc: false });
+  }
+
+  if (path === "/account/login") {
+    const lc = String(b.user || "").trim().toLowerCase();
+    const pass = String(b.pass || "").slice(0, 100);
+    const row = USER_RE.test(lc) ? await env.DB.prepare("SELECT id, name, salt, hash, lat FROM users WHERE name_lc = ?1").bind(lc).first() : null;
+    const hash = await pbkdf2Hex(pass, row ? row.salt : "00".repeat(16));
+    if (!row || !safeEq(hash, row.hash)) return json({ error: "Usuario o contraseña incorrectos." }, 401);
+    await env.DB.prepare("UPDATE users SET last_ts = ?1 WHERE id = ?2").bind(now, row.id).run();
+    return json({ ok: true, user: row.name, token: await newSession(env, row.id), loc: row.lat != null });
+  }
+
+  const acc = await accUser(env, b.token);
+  if (!acc) return json({ error: "Sesión caducada" }, 401);
+
+  if (path === "/account/me") {
+    await env.DB.prepare("UPDATE users SET last_ts = ?1 WHERE id = ?2").bind(now, acc.id).run();
+    return json({ ok: true, user: acc.name, loc: acc.lat != null });
+  }
+  if (path === "/account/logout") {
+    await env.DB.prepare("DELETE FROM acc_sessions WHERE th = ?1").bind(await sha256Hex(String(b.token))).run();
+    return json({ ok: true });
+  }
+  if (path === "/account/location") {
+    if (b.clear === true) {
+      await env.DB.prepare("UPDATE users SET lat = NULL, lon = NULL, loc_ts = NULL WHERE id = ?1").bind(acc.id).run();
+      return json({ ok: true, loc: false });
+    }
+    const lat = Number(b.lat), lon = Number(b.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return json({ error: "Ubicación no válida" }, 400);
+    /* se redondea a 2 decimales (≈1 km): precisa para saber la zona, pero no la casa */
+    const rl = Math.round(lat * 100) / 100, ro = Math.round(lon * 100) / 100;
+    await env.DB.prepare("UPDATE users SET lat = ?1, lon = ?2, loc_ts = ?3 WHERE id = ?4").bind(rl, ro, now, acc.id).run();
+    return json({ ok: true, loc: true });
+  }
+  if (path === "/account/delete") {
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM msgs WHERE uname = ?1").bind(acc.name),
+      env.DB.prepare("DELETE FROM acc_sessions WHERE uid = ?1").bind(acc.id),
+      env.DB.prepare("DELETE FROM users WHERE id = ?1").bind(acc.id),
+    ]);
+    return json({ ok: true });
+  }
+  return json({ error: "No encontrado" }, 404);
 }
 
 export default {
@@ -646,6 +753,13 @@ export default {
       return json({ error: "Tu acceso a Ekovozia ha sido suspendido" + (mod.blk.text ? ". Motivo: " + mod.blk.text : ""), banned: true }, 403);
     }
 
+    /* Cuentas de usuario */
+    if (path.indexOf("/account/") === 0) {
+      if (!env.DB) return json({ error: "Las cuentas no están disponibles (falta la base de datos)" }, 500);
+      try { return await accountApi(path, request, env, ip, json); }
+      catch (e) { return json({ error: "Error de cuentas", detail: String(e && e.message ? e.message : e).slice(0, 200) }, 500); }
+    }
+
     /* Audio -> texto (con idioma opcional) */
     if (path === "/transcribe") {
       const lim = limited(1);
@@ -717,7 +831,8 @@ export default {
     if (system === STYLE && env.DB && mod.h) {
       const sidIn = /^[a-z0-9]{8,40}$/i.test(String(body.sid || "")) ? String(body.sid) : "";
       const cidIn = /^[a-z0-9]{4,40}$/i.test(String(body.cid || "")) ? String(body.cid) : "";
-      ctx.waitUntil(logMsg(env, mod.h, sidIn, cidIn, lastUser, request.cf, request.headers.get("user-agent")));
+      const acc = await accUser(env, body.token);
+      ctx.waitUntil(logMsg(env, mod.h, sidIn, cidIn, acc ? acc.name : "", lastUser, request.cf, request.headers.get("user-agent")));
       if (mod.blk && mod.blk.kind === "warn" && !mod.blk.ack) {
         modWarning = "⚠️ Aviso del administrador: " + mod.blk.text;
         ctx.waitUntil((async () => {

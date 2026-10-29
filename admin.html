@@ -182,6 +182,17 @@ td small { display: block; color: var(--muted); }
   </div>
 
   <div class="card" style="margin-bottom:14px">
+    <div class="sechead"><h2>Cuentas registradas</h2></div>
+    <div class="tablewrap">
+      <table style="min-width:560px">
+        <thead><tr><th>Usuario</th><th>Creada</th><th>Última vez</th><th>Ubicación (≈1 km)</th></tr></thead>
+        <tbody id="accounts"></tbody>
+      </table>
+    </div>
+    <p class="soft" style="margin:10px 0 0">Solo tienen ubicación quienes la han autorizado. Está redondeada a una zona de unos 1 km.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
     <div class="sechead"><h2>Usuarios sancionados</h2></div>
     <div class="tablewrap">
       <table style="min-width:640px">
@@ -435,6 +446,33 @@ td small { display: block; color: var(--muted); }
       all.addEventListener("click", function () { userFilter = ""; renderMod(); });
       f.appendChild(all);
     }
+    var umap = {};
+    (d.users || []).forEach(function (u) { umap[u.name] = u; });
+    function mapLink(u, cls) {
+      var ml = el("a", cls || "dmeta", "📍 " + Number(u.lat).toFixed(2) + ", " + Number(u.lon).toFixed(2));
+      ml.href = "https://www.google.com/maps?q=" + u.lat + "," + u.lon;
+      ml.target = "_blank"; ml.rel = "noopener noreferrer";
+      ml.addEventListener("click", function (ev) { ev.stopPropagation(); });
+      return ml;
+    }
+    var ab = $("accounts");
+    ab.textContent = "";
+    if (!(d.users || []).length) {
+      var ta = document.createElement("tr"), ca = el("td", "empty", "Todavía no hay cuentas.");
+      ca.colSpan = 4; ta.appendChild(ca); ab.appendChild(ta);
+    }
+    (d.users || []).forEach(function (u) {
+      var tr = document.createElement("tr");
+      tr.appendChild(el("td", "", u.name));
+      tr.appendChild(el("td", "", when(u.created)));
+      tr.appendChild(el("td", "", when(u.last_ts)));
+      var tdl = document.createElement("td");
+      if (u.lat != null && u.lon != null) tdl.appendChild(mapLink(u, ""));
+      else tdl.appendChild(document.createTextNode("—"));
+      tr.appendChild(tdl);
+      ab.appendChild(tr);
+    });
+
     var mb = $("msgs");
     mb.textContent = "";
     if (!msgs.length) { mb.appendChild(el("p", "empty", "Todavía no hay mensajes guardados.")); return; }
@@ -442,10 +480,10 @@ td small { display: block; color: var(--muted); }
     /* 1) agrupar por dispositivo (huella + dispositivo) y 2) por conversación */
     var devs = {}, order = [];
     msgs.slice().sort(function (x, y) { return x.ts - y.ts; }).forEach(function (m) {
-      var k = m.h + "|" + (m.dev || "");
+      var k = m.uname ? "u:" + m.uname : m.h + "|" + (m.dev || "");
       var g = devs[k];
       if (!g) {
-        g = devs[k] = { key: k, h: m.h, dev: m.dev || "Dispositivo desconocido", city: m.city, country: m.country, convs: [], byCid: {}, last: 0, count: 0 };
+        g = devs[k] = { key: k, h: m.h, uname: m.uname || "", dev: m.dev || "Dispositivo desconocido", city: m.city, country: m.country, convs: [], byCid: {}, last: 0, count: 0 };
         order.push(g);
       }
       var cid = m.cid || "", c = cid ? g.byCid[cid] : null;
@@ -468,8 +506,10 @@ td small { display: block; color: var(--muted); }
       dd.className = "dev";
       keep(dd, "d:" + g.key, order.length === 1);
       var sm = document.createElement("summary");
-      sm.appendChild(el("span", "dtitle", g.dev));
-      sm.appendChild(el("span", "dmeta", (g.city ? g.city + (g.country ? ", " + country(g.country) : "") : country(g.country)) + " · " + g.convs.length + (g.convs.length === 1 ? " conversación" : " conversaciones") + " · " + g.count + (g.count === 1 ? " mensaje" : " mensajes") + " · " + when(g.last)));
+      sm.appendChild(el("span", "dtitle", g.uname ? "👤 " + g.uname : g.dev));
+      sm.appendChild(el("span", "dmeta", (g.uname ? g.dev + " · " : "") + (g.city ? g.city + (g.country ? ", " + country(g.country) : "") : country(g.country)) + " · " + g.convs.length + (g.convs.length === 1 ? " conversación" : " conversaciones") + " · " + g.count + (g.count === 1 ? " mensaje" : " mensajes") + " · " + when(g.last)));
+      var gu = g.uname && umap[g.uname];
+      if (gu && gu.lat != null && gu.lon != null) sm.appendChild(mapLink(gu));
       var bk = byH[g.h];
       if (bk) sm.appendChild(el("span", "tag" + (bk.kind === "ban" ? " bad" : ""), bk.kind === "ban" ? "suspendido" : "avisado"));
       var ub = el("button", "userbtn", g.h);
