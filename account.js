@@ -35,10 +35,13 @@
       "#ekv-acc{width:100%;max-width:400px;background:var(--surface,#fff);color:var(--ink,#12202C);border:1px solid var(--line,#D3DAE1);border-radius:20px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3);font:400 .92rem/1.5 var(--font-body,system-ui,sans-serif)}" +
       "#ekv-acc h2{margin:0 0 6px;font-size:1.25rem}" +
       "#ekv-acc p{margin:0 0 14px;color:var(--muted,#5B6B79)}" +
-      "#ekv-acc input[type=text],#ekv-acc input[type=password]{width:100%;box-sizing:border-box;padding:12px 14px;margin-bottom:10px;border-radius:12px;border:1px solid var(--line,#D3DAE1);background:var(--bg,transparent);color:inherit;font:inherit}" +
+      "#ekv-acc input[type=text],#ekv-acc input[type=password],#ekv-acc input[type=email]{width:100%;box-sizing:border-box;padding:12px 14px;margin-bottom:10px;border-radius:12px;border:1px solid var(--line,#D3DAE1);background:var(--bg,transparent);color:inherit;font:inherit}" +
       "#ekv-acc label.chk{display:flex;gap:10px;align-items:flex-start;margin:4px 0 12px;font-size:.84rem;color:var(--muted,#5B6B79);cursor:pointer}" +
       "#ekv-acc label.chk input{margin-top:3px;flex:none}" +
       "#ekv-acc .err{color:#C0392B;min-height:1.2em;margin:0 0 8px;font-size:.85rem}" +
+      "#ekv-acc .okt{color:#1E8E3E;min-height:1.2em;margin:0 0 8px;font-size:.85rem}" +
+      "#ekv-acc h3{margin:0 0 8px;font-size:.95rem}" +
+      "#ekv-acc .sec{border-top:1px solid var(--line,#D3DAE1);padding-top:14px;margin-top:14px}" +
       "#ekv-acc .row{display:flex;gap:8px;flex-wrap:wrap}" +
       "#ekv-acc button{flex:1;padding:11px 14px;border-radius:12px;border:1px solid var(--line,#D3DAE1);background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer}" +
       "#ekv-acc button.ok{background:var(--accent,#2E4BDB);border-color:var(--accent,#2E4BDB);color:var(--accent-ink,#fff)}" +
@@ -114,11 +117,17 @@
     box.textContent = "";
     box.appendChild(el("h2", "", reg ? "¿Creamos una cuenta?" : "Entrar en tu cuenta"));
     box.appendChild(el("p", "", reg
-      ? "Así no te pierdo y tus mensajes se asocian a tu usuario. Solo usuario y contraseña, sin correo."
+      ? "Así no te pierdo y tus mensajes se asocian a tu usuario. Solo necesitas usuario y contraseña; el correo es opcional."
       : "Escribe tu usuario y tu contraseña."));
     var u = el("input"); u.type = "text"; u.placeholder = "Usuario"; u.maxLength = 20; u.autocomplete = "username"; u.setAttribute("autocapitalize", "none"); u.setAttribute("spellcheck", "false"); u.setAttribute("aria-label", "Usuario");
     var p = el("input"); p.type = "password"; p.placeholder = "Contraseña"; p.maxLength = 100; p.autocomplete = reg ? "new-password" : "current-password"; p.setAttribute("aria-label", "Contraseña");
     box.appendChild(u); box.appendChild(p);
+
+    var em = null;
+    if (reg) {
+      em = el("input"); em.type = "email"; em.placeholder = "Correo (opcional)"; em.maxLength = 100; em.autocomplete = "email"; em.setAttribute("aria-label", "Correo (opcional)");
+      box.appendChild(em);
+    }
 
     var chk = null;
     if (reg) {
@@ -145,7 +154,7 @@
     box.appendChild(sw);
 
     var sm = el("p", "small");
-    sm.appendChild(document.createTextNode(reg ? "Si olvidas la contraseña no se puede recuperar. " : ""));
+    sm.appendChild(document.createTextNode(reg ? "Si olvidas la contraseña, solo el administrador puede restablecerla. " : ""));
     var a = el("a", "", "Privacidad"); a.href = "/acerca#privacidad";
     sm.appendChild(a);
     box.appendChild(sm);
@@ -154,9 +163,9 @@
       err.textContent = "";
       if (!u.value.trim() || !p.value) { err.textContent = "Escribe usuario y contraseña."; return; }
       go.disabled = true; go.textContent = "Un momento…";
-      api(reg ? "/account/register" : "/account/login", { user: u.value.trim(), pass: p.value }).then(function (r) {
+      api(reg ? "/account/register" : "/account/login", { user: u.value.trim(), pass: p.value, email: em ? em.value.trim() : "" }).then(function (r) {
         if (!r.ok) { go.disabled = false; go.textContent = reg ? "Crear cuenta" : "Entrar"; err.textContent = r.d.error || "No se pudo completar."; return; }
-        acc = { user: r.d.user, token: r.d.token, loc: !!r.d.loc };
+        acc = { user: r.d.user, token: r.d.token, loc: !!r.d.loc, email: r.d.email || "" };
         write(); paintBtn();
         if (reg && chk && chk.checked) askLocation(function () { close(); });
         else close();
@@ -168,27 +177,83 @@
 
   function viewAccount(box) {
     box.textContent = "";
-    box.appendChild(el("h2", "", "Hola, " + acc.user));
-    box.appendChild(el("p", "", acc.loc
+    box.appendChild(el("h2", "", "Tu cuenta"));
+    var who = el("p", "", "Usuario: ");
+    who.appendChild(el("b", "", acc.user));
+    box.appendChild(who);
+
+    function sec(title) { var s = el("div", "sec"); s.appendChild(el("h3", "", title)); box.appendChild(s); return s; }
+    function note(p, text, good) { p.className = good ? "okt" : "err"; p.textContent = text || ""; }
+    function msgP() { var p = el("p", "err"); p.setAttribute("role", "alert"); return p; }
+    function expired(r) {
+      if (r.status === 401 && (r.d.error || "") === "Sesión caducada") { acc = null; write(); paintBtn(); open("login"); return true; }
+      return false;
+    }
+
+    /* correo */
+    var s1 = sec("Correo (opcional)");
+    var em = el("input"); em.type = "email"; em.placeholder = "tucorreo@ejemplo.com"; em.maxLength = 100; em.autocomplete = "email"; em.value = acc.email || ""; em.setAttribute("aria-label", "Correo");
+    var m1 = msgP();
+    var r1 = el("div", "row");
+    var sv = el("button", "", "Guardar correo"); sv.type = "button";
+    sv.addEventListener("click", function () {
+      note(m1, ""); sv.disabled = true;
+      api("/account/email", { token: acc.token, email: em.value.trim() }).then(function (r) {
+        sv.disabled = false;
+        if (expired(r)) return;
+        if (!r.ok) { note(m1, r.d.error || "No se pudo guardar."); return; }
+        acc.email = r.d.email || ""; write();
+        note(m1, acc.email ? "Correo guardado." : "Correo quitado.", true);
+      });
+    });
+    r1.appendChild(sv);
+    s1.appendChild(em); s1.appendChild(m1); s1.appendChild(r1);
+
+    /* ubicación */
+    var s2 = sec("Ubicación");
+    s2.appendChild(el("p", "", acc.loc
       ? "Estás compartiendo tu ubicación aproximada (zona de unos 1 km)."
       : "No estás compartiendo tu ubicación."));
-    var err = el("p", "err"); err.setAttribute("role", "alert");
-
-    var row1 = el("div", "row");
+    var m2 = msgP();
+    var r2 = el("div", "row");
     var loc = el("button", "", acc.loc ? "Dejar de compartir ubicación" : "Compartir mi ubicación"); loc.type = "button";
     loc.addEventListener("click", function () {
-      err.textContent = ""; loc.disabled = true;
+      note(m2, ""); loc.disabled = true;
       if (acc.loc) {
-        api("/account/location", { token: acc.token, clear: true }).then(function () { acc.loc = false; write(); viewAccount(box); });
+        api("/account/location", { token: acc.token, clear: true }).then(function (r) { if (expired(r)) return; acc.loc = false; write(); viewAccount(box); });
       } else {
-        askLocation(function (ok) { if (!ok) { loc.disabled = false; err.textContent = "No pude obtener tu ubicación (¿has dado permiso al navegador?)."; } else viewAccount(box); });
+        askLocation(function (ok) { if (!ok) { loc.disabled = false; note(m2, "No pude obtener tu ubicación (¿has dado permiso al navegador?)."); } else viewAccount(box); });
       }
     });
-    row1.appendChild(loc);
-    box.appendChild(row1);
-    box.appendChild(err);
+    r2.appendChild(loc);
+    s2.appendChild(m2); s2.appendChild(r2);
 
-    var row2 = el("div", "row");
+    /* contraseña */
+    var s3 = sec("Cambiar contraseña");
+    var op = el("input"); op.type = "password"; op.placeholder = "Contraseña actual"; op.maxLength = 100; op.autocomplete = "current-password"; op.setAttribute("aria-label", "Contraseña actual");
+    var np = el("input"); np.type = "password"; np.placeholder = "Contraseña nueva (mín. 6)"; np.maxLength = 100; np.autocomplete = "new-password"; np.setAttribute("aria-label", "Contraseña nueva");
+    var m3 = msgP();
+    var r3 = el("div", "row");
+    var cp = el("button", "", "Cambiar contraseña"); cp.type = "button";
+    cp.addEventListener("click", function () {
+      note(m3, "");
+      if (!op.value || !np.value) { note(m3, "Escribe la contraseña actual y la nueva."); return; }
+      cp.disabled = true;
+      api("/account/password", { token: acc.token, oldpass: op.value, newpass: np.value }).then(function (r) {
+        cp.disabled = false;
+        if (expired(r)) return;
+        if (!r.ok) { note(m3, r.d.error || "No se pudo cambiar."); return; }
+        op.value = ""; np.value = "";
+        note(m3, "Contraseña cambiada. Se ha cerrado tu sesión en otros dispositivos.", true);
+      });
+    });
+    r3.appendChild(cp);
+    s3.appendChild(op); s3.appendChild(np); s3.appendChild(m3); s3.appendChild(r3);
+
+    /* sesión y borrado */
+    var s4 = sec("Sesión");
+    var m4 = msgP();
+    var r4 = el("div", "row");
     var out = el("button", "ok", "Cerrar sesión"); out.type = "button";
     out.addEventListener("click", function () {
       api("/account/logout", { token: acc.token });
@@ -196,14 +261,15 @@
     });
     var del = el("button", "danger", "Eliminar mi cuenta"); del.type = "button";
     del.addEventListener("click", function () {
-      if (!window.confirm("Se borrarán tu cuenta, tu ubicación y los mensajes asociados a ella. ¿Seguro?")) return;
+      if (!window.confirm("Se borrarán tu cuenta, tu correo, tu ubicación y los mensajes asociados a ella. ¿Seguro?")) return;
       api("/account/delete", { token: acc.token }).then(function (r) {
-        if (!r.ok) { err.textContent = r.d.error || "No se pudo eliminar."; return; }
+        if (expired(r)) return;
+        if (!r.ok) { note(m4, r.d.error || "No se pudo eliminar."); return; }
         acc = null; write(); paintBtn(); close();
       });
     });
-    row2.appendChild(out); row2.appendChild(del);
-    box.appendChild(row2);
+    r4.appendChild(out); r4.appendChild(del);
+    s4.appendChild(m4); s4.appendChild(r4);
 
     var cl = el("button", "link", "Cerrar"); cl.type = "button";
     cl.addEventListener("click", close);
@@ -219,7 +285,7 @@
       paintBtn();
       api("/account/me", { token: acc.token }).then(function (r) {
         if (r.status === 401) { acc = null; write(); paintBtn(); }
-        else if (r.ok) { acc.user = r.d.user; acc.loc = !!r.d.loc; write(); paintBtn(); }
+        else if (r.ok) { acc.user = r.d.user; acc.loc = !!r.d.loc; acc.email = r.d.email || ""; write(); paintBtn(); }
       });
     } else {
       var skipped = false;

@@ -184,8 +184,8 @@ td small { display: block; color: var(--muted); }
   <div class="card" style="margin-bottom:14px">
     <div class="sechead"><h2>Cuentas registradas</h2></div>
     <div class="tablewrap">
-      <table style="min-width:560px">
-        <thead><tr><th>Usuario</th><th>Creada</th><th>Última vez</th><th>Ubicación (≈1 km)</th></tr></thead>
+      <table style="min-width:760px">
+        <thead><tr><th>Usuario</th><th>Correo</th><th>Creada</th><th>Última vez</th><th>Ubicación (≈1 km)</th><th></th></tr></thead>
         <tbody id="accounts"></tbody>
       </table>
     </div>
@@ -459,17 +459,32 @@ td small { display: block; color: var(--muted); }
     ab.textContent = "";
     if (!(d.users || []).length) {
       var ta = document.createElement("tr"), ca = el("td", "empty", "Todavía no hay cuentas.");
-      ca.colSpan = 4; ta.appendChild(ca); ab.appendChild(ta);
+      ca.colSpan = 6; ta.appendChild(ca); ab.appendChild(ta);
     }
     (d.users || []).forEach(function (u) {
       var tr = document.createElement("tr");
       tr.appendChild(el("td", "", u.name));
+      tr.appendChild(el("td", "msg", u.email || "—"));
       tr.appendChild(el("td", "", when(u.created)));
       tr.appendChild(el("td", "", when(u.last_ts)));
       var tdl = document.createElement("td");
       if (u.lat != null && u.lon != null) tdl.appendChild(mapLink(u, ""));
       else tdl.appendChild(document.createTextNode("—"));
       tr.appendChild(tdl);
+      var tda = el("td", "acts");
+      var rs = el("button", "mini warn", "Restablecer contraseña"); rs.type = "button";
+      rs.addEventListener("click", function () {
+        if (!window.confirm("¿Restablecer la contraseña de " + u.name + "? Se cerrará su sesión y tendrás que pasarle la nueva.")) return;
+        adminUser({ action: "reset", name: u.name }, function (d) {
+          window.prompt("Contraseña temporal de " + u.name + " (cópiala y pásasela; podrá cambiarla en «Tu cuenta»):", d.temp);
+        });
+      });
+      var dl = el("button", "mini danger", "Eliminar"); dl.type = "button";
+      dl.addEventListener("click", function () {
+        if (!window.confirm("¿Eliminar la cuenta de " + u.name + " y sus mensajes? No se puede deshacer.")) return;
+        adminUser({ action: "delete", name: u.name }, function () { load(); });
+      });
+      tda.appendChild(rs); tda.appendChild(dl); tr.appendChild(tda);
       ab.appendChild(tr);
     });
 
@@ -568,6 +583,18 @@ td small { display: block; color: var(--muted); }
         if (!x.ok) { $("appErr").textContent = x.d.error || "No se pudo aplicar la acción."; return; }
         $("appErr").textContent = "";
         load();
+      }).catch(function () { $("appErr").textContent = "No se pudo conectar con el Worker."; });
+  }
+  function adminUser(payload, done) {
+    fetch(ENDPOINT + "/admin/users", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + getTok() },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (x) {
+        if (!x.ok) { $("appErr").textContent = x.d.error || "No se pudo aplicar la acción."; return; }
+        $("appErr").textContent = "";
+        if (done) done(x.d);
       }).catch(function () { $("appErr").textContent = "No se pudo conectar con el Worker."; });
   }
   function unban(payload) {

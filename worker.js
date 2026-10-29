@@ -1,5 +1,5 @@
 const ALLOWED_ORIGIN = "https://ekovozia.pages.dev";
-const VERSION = "worker 3.8";
+const VERSION = "worker 3.9";
 const MAX_FAILS = 4; /* intentos fallidos de clave antes de bloquear */
 
 const TIERS = {
@@ -319,6 +319,7 @@ const MIGRATIONS = [
   "ALTER TABLE sessions ADD COLUMN bver TEXT DEFAULT ''",
   "ALTER TABLE msgs ADD COLUMN cid TEXT DEFAULT ''",
   "ALTER TABLE msgs ADD COLUMN uname TEXT DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''",
 ];
 let schemaReady = false;
 async function ensureSchema(env) {
@@ -482,7 +483,7 @@ async function adminStats(env, days) {
     q("SELECT model k, COUNT(*) n FROM sessions WHERE first_ts >= ?1 AND COALESCE(model,'')<>'' GROUP BY k ORDER BY n DESC LIMIT 12", since),
     q("SELECT id, ts, h, sid, cid, uname, text, country, city, dev FROM msgs ORDER BY ts DESC LIMIT 500"),
     q("SELECT h, kind, text, ts, ack, country, city, dev FROM blocks ORDER BY ts DESC LIMIT 50"),
-    q("SELECT name, created, last_ts, lat, lon, loc_ts FROM users ORDER BY last_ts DESC LIMIT 200"),
+    q("SELECT name, email, created, last_ts, lat, lon, loc_ts FROM users ORDER BY last_ts DESC LIMIT 200"),
   ]);
   const r = (i) => (out[i] && out[i].results) || [];
   const rows = (i) => r(i).map((x) => ({ k: x.k, n: x.n }));
@@ -541,6 +542,13 @@ async function logMsg(env, h, sid, cid, uname, text, cf, ua) {
 const ACC_STRICT = new Map();
 const ACC_LOOSE = new Map();
 const USER_RE = /^[a-zA-Z0-9_.-]{3,20}$/;
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
+/* "" si no hay correo, null si no es válido */
+function cleanEmail(v) {
+  v = String(v || "").trim().toLowerCase();
+  if (!v) return "";
+  return v.length <= 100 && EMAIL_RE.test(v) ? v : null;
+}
 const SESSION_MS = 90 * 86400000;
 
 function toHex(buf) { return Array.from(new Uint8Array(buf)).map((x) => x.toString(16).padStart(2, "0")).join(""); }
@@ -557,7 +565,7 @@ async function accUser(env, token) {
     if (!env.DB || !/^[a-f0-9]{64}$/.test(token)) return null;
     await ensureSchema(env);
     const th = await sha256Hex(token);
-    const row = await env.DB.prepare("SELECT u.id id, u.name name, u.lat lat FROM acc_sessions s JOIN users u ON u.id = s.uid WHERE s.th = ?1 AND s.ts > ?2")
+    const row = await env.DB.prepare("SELECT u.id id, u.name name, u.lat lat, u.email email FROM acc_sessions s JOIN users u ON u.id = s.uid WHERE s.th = ?1 AND s.ts > ?2")
       .bind(th, Date.now() - SESSION_MS).first();
     return row || null;
   } catch (e) { return null; }
@@ -570,7 +578,7 @@ async function newSession(env, uid) {
 }
 
 async function accountApi(path, request, env, ip, json) {
-  const strict = path === "/account/register" || path === "/account/login";
+  const strict = path === "/account/register" || path === "/account/login" || path === "/account/password";
   if (!hit(strict ? ACC_STRICT : ACC_LOOSE, ip, strict ? 15 : 60)) return json({ error: "Demasiados intentos, espera un minuto" }, 429);
   await ensureSchema(env);
   let b = {};
@@ -582,27 +590,29 @@ async function accountApi(path, request, env, ip, json) {
     const pass = String(b.pass || "");
     if (!USER_RE.test(name)) return json({ error: "El usuario debe tener de 3 a 20 caracteres: letras, números, punto, guion o guion bajo." }, 400);
     if (pass.length < 6 || pass.length > 100) return json({ error: "La contraseña debe tener entre 6 y 100 caracteres." }, 400);
+    const email = cleanEmail(b.email);
+    if (email === null) return json({ error: "El correo no parece válido." }, 400);
     const lc = name.toLowerCase();
     const exists = await env.DB.prepare("SELECT 1 x FROM users WHERE name_lc = ?1").bind(lc).first();
     if (exists) return json({ error: "Ese usuario ya existe, prueba con otro." }, 409);
     const salt = randHex(16), id = randHex(8);
     const hash = await pbkdf2Hex(pass, salt);
     try {
-      await env.DB.prepare("INSERT INTO users (id,name,name_lc,salt,hash,created,last_ts) VALUES (?1,?2,?3,?4,?5,?6,?6)").bind(id, name, lc, salt, hash, now).run();
+      await env.DB.prepare("INSERT INTO users (id,name,name_lc,salt,hash,created,last_ts,email) VALUES (?1,?2,?3,?4,?5,?6,?6,?7)").bind(id, name, lc, salt, hash, now, email).run();
     } catch (e) {
       return json({ error: "Ese usuario ya existe, prueba con otro." }, 409);
     }
-    return json({ ok: true, user: name, token: await newSession(env, id), loc: false });
+    return json({ ok: true, user: name, token: await newSession(env, id), loc: false, email });
   }
 
   if (path === "/account/login") {
     const lc = String(b.user || "").trim().toLowerCase();
     const pass = String(b.pass || "").slice(0, 100);
-    const row = USER_RE.test(lc) ? await env.DB.prepare("SELECT id, name, salt, hash, lat FROM users WHERE name_lc = ?1").bind(lc).first() : null;
+    const row = USER_RE.test(lc) ? await env.DB.prepare("SELECT id, name, salt, hash, lat, email FROM users WHERE name_lc = ?1").bind(lc).first() : null;
     const hash = await pbkdf2Hex(pass, row ? row.salt : "00".repeat(16));
     if (!row || !safeEq(hash, row.hash)) return json({ error: "Usuario o contraseña incorrectos." }, 401);
     await env.DB.prepare("UPDATE users SET last_ts = ?1 WHERE id = ?2").bind(now, row.id).run();
-    return json({ ok: true, user: row.name, token: await newSession(env, row.id), loc: row.lat != null });
+    return json({ ok: true, user: row.name, token: await newSession(env, row.id), loc: row.lat != null, email: row.email || "" });
   }
 
   const acc = await accUser(env, b.token);
@@ -610,7 +620,25 @@ async function accountApi(path, request, env, ip, json) {
 
   if (path === "/account/me") {
     await env.DB.prepare("UPDATE users SET last_ts = ?1 WHERE id = ?2").bind(now, acc.id).run();
-    return json({ ok: true, user: acc.name, loc: acc.lat != null });
+    return json({ ok: true, user: acc.name, loc: acc.lat != null, email: acc.email || "" });
+  }
+  if (path === "/account/email") {
+    const email = cleanEmail(b.email);
+    if (email === null) return json({ error: "El correo no parece válido." }, 400);
+    await env.DB.prepare("UPDATE users SET email = ?1 WHERE id = ?2").bind(email, acc.id).run();
+    return json({ ok: true, email });
+  }
+  if (path === "/account/password") {
+    const oldp = String(b.oldpass || "").slice(0, 100), np = String(b.newpass || "");
+    if (np.length < 6 || np.length > 100) return json({ error: "La contraseña nueva debe tener entre 6 y 100 caracteres." }, 400);
+    const row = await env.DB.prepare("SELECT salt, hash FROM users WHERE id = ?1").bind(acc.id).first();
+    if (!row || !safeEq(await pbkdf2Hex(oldp, row.salt), row.hash)) return json({ error: "La contraseña actual no es correcta." }, 401);
+    const salt = randHex(16), hash = await pbkdf2Hex(np, salt);
+    await env.DB.batch([
+      env.DB.prepare("UPDATE users SET salt = ?1, hash = ?2 WHERE id = ?3").bind(salt, hash, acc.id),
+      env.DB.prepare("DELETE FROM acc_sessions WHERE uid = ?1 AND th <> ?2").bind(acc.id, await sha256Hex(String(b.token))),
+    ]);
+    return json({ ok: true });
   }
   if (path === "/account/logout") {
     await env.DB.prepare("DELETE FROM acc_sessions WHERE th = ?1").bind(await sha256Hex(String(b.token))).run();
@@ -677,7 +705,7 @@ export default {
     }
 
     /* Panel de administración: protegido por ADMIN_TOKEN, con bloqueo tras MAX_FAILS fallos */
-    if (path === "/admin/stats" || path === "/admin/bans" || path === "/admin/mod") {
+    if (path === "/admin/stats" || path === "/admin/bans" || path === "/admin/mod" || path === "/admin/users") {
       if (!hit(ADMIN_HITS, ip, 20)) return json({ error: "Demasiados intentos, espera un minuto" }, 429);
       if (!env.ADMIN_TOKEN) return json({ error: "Falta el secreto ADMIN_TOKEN en el Worker" }, 500);
       if (!env.DB) return json({ error: "Falta la base de datos D1 (binding «DB») en el Worker" }, 500);
@@ -738,6 +766,31 @@ export default {
             "ON CONFLICT(h) DO UPDATE SET kind=?2, text=?3, ts=?4, ack=0, country=?5, city=?6, dev=?7"
           ).bind(target, b.action, text, now, String(info.country || ""), String(info.city || ""), String(info.dev || "")).run();
           return json({ ok: true });
+        }
+
+        if (path === "/admin/users") {
+          const nm = String(b.name || "");
+          if (!USER_RE.test(nm)) return json({ error: "Usuario no válido" }, 400);
+          const u = await env.DB.prepare("SELECT id, name FROM users WHERE name_lc = ?1").bind(nm.toLowerCase()).first();
+          if (!u) return json({ error: "Ese usuario no existe" }, 404);
+          if (b.action === "reset") {
+            const temp = randHex(5);
+            const salt = randHex(16), hash = await pbkdf2Hex(temp, salt);
+            await env.DB.batch([
+              env.DB.prepare("UPDATE users SET salt = ?1, hash = ?2 WHERE id = ?3").bind(salt, hash, u.id),
+              env.DB.prepare("DELETE FROM acc_sessions WHERE uid = ?1").bind(u.id),
+            ]);
+            return json({ ok: true, temp });
+          }
+          if (b.action === "delete") {
+            await env.DB.batch([
+              env.DB.prepare("DELETE FROM msgs WHERE uname = ?1").bind(u.name),
+              env.DB.prepare("DELETE FROM acc_sessions WHERE uid = ?1").bind(u.id),
+              env.DB.prepare("DELETE FROM users WHERE id = ?1").bind(u.id),
+            ]);
+            return json({ ok: true });
+          }
+          return json({ error: "Acción no válida" }, 400);
         }
 
         const days = [1, 7, 30, 90].includes(b.days) ? b.days : 7;

@@ -6,7 +6,7 @@
 2. **Enlazarla al Worker**: Worker > Settings > Bindings > Add > D1 database. Variable name: `DB`, elige `ekovozia`.
 3. **Clave del panel**: Worker > Settings > Variables and Secrets > añade el secreto `ADMIN_TOKEN` con una clave larga y aleatoria.
 4. (Opcional) Secreto `HASH_SALT`: texto aleatorio para la huella de IP. Si no existe se usa ADMIN_TOKEN.
-5. Sube el nuevo `worker.js` (versión 3.8) al Worker y despliega.
+5. Sube el nuevo `worker.js` (versión 3.9) al Worker y despliega.
 6. Sube a Pages: `index.html`, `acerca.html`, `analytics.js`, `account.js` y `admin.html`.
 7. Abre `https://ekovozia.pages.dev/admin`, escribe la clave y listo. Las tablas se crean solas.
 
