@@ -449,7 +449,7 @@ td small { display: block; color: var(--muted); }
     var umap = {};
     (d.users || []).forEach(function (u) { umap[u.name] = u; });
     function mapLink(u, cls) {
-      var ml = el("a", cls || "dmeta", "📍 " + Number(u.lat).toFixed(2) + ", " + Number(u.lon).toFixed(2));
+      var ml = el("a", cls || "dmeta", "📍 " + Number(u.lat).toFixed(2) + ", " + Number(u.lon).toFixed(2) + (u.loc_src === "ip" ? " (por conexión)" : ""));
       ml.href = "https://www.google.com/maps?q=" + u.lat + "," + u.lon;
       ml.target = "_blank"; ml.rel = "noopener noreferrer";
       ml.addEventListener("click", function (ev) { ev.stopPropagation(); });

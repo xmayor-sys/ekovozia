@@ -1,5 +1,5 @@
 const ALLOWED_ORIGIN = "https://ekovozia.pages.dev";
-const VERSION = "worker 3.9";
+const VERSION = "worker 3.10";
 const MAX_FAILS = 4; /* intentos fallidos de clave antes de bloquear */
 
 const TIERS = {
@@ -320,6 +320,7 @@ const MIGRATIONS = [
   "ALTER TABLE msgs ADD COLUMN cid TEXT DEFAULT ''",
   "ALTER TABLE msgs ADD COLUMN uname TEXT DEFAULT ''",
   "ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN loc_src TEXT DEFAULT ''",
 ];
 let schemaReady = false;
 async function ensureSchema(env) {
@@ -483,7 +484,7 @@ async function adminStats(env, days) {
     q("SELECT model k, COUNT(*) n FROM sessions WHERE first_ts >= ?1 AND COALESCE(model,'')<>'' GROUP BY k ORDER BY n DESC LIMIT 12", since),
     q("SELECT id, ts, h, sid, cid, uname, text, country, city, dev FROM msgs ORDER BY ts DESC LIMIT 500"),
     q("SELECT h, kind, text, ts, ack, country, city, dev FROM blocks ORDER BY ts DESC LIMIT 50"),
-    q("SELECT name, email, created, last_ts, lat, lon, loc_ts FROM users ORDER BY last_ts DESC LIMIT 200"),
+    q("SELECT name, email, created, last_ts, lat, lon, loc_ts, loc_src FROM users ORDER BY last_ts DESC LIMIT 200"),
   ]);
   const r = (i) => (out[i] && out[i].results) || [];
   const rows = (i) => r(i).map((x) => ({ k: x.k, n: x.n }));
@@ -646,14 +647,23 @@ async function accountApi(path, request, env, ip, json) {
   }
   if (path === "/account/location") {
     if (b.clear === true) {
-      await env.DB.prepare("UPDATE users SET lat = NULL, lon = NULL, loc_ts = NULL WHERE id = ?1").bind(acc.id).run();
+      await env.DB.prepare("UPDATE users SET lat = NULL, lon = NULL, loc_ts = NULL, loc_src = '' WHERE id = ?1").bind(acc.id).run();
       return json({ ok: true, loc: false });
+    }
+    if (b.ip === true) {
+      /* sin GPS ni permiso del dispositivo: zona aproximada según la conexión (a nivel de ciudad) */
+      const cf = request.cf || {};
+      const ilat = Number(cf.latitude), ilon = Number(cf.longitude);
+      if (!Number.isFinite(ilat) || !Number.isFinite(ilon)) return json({ error: "No he podido deducir tu zona por la conexión." }, 400);
+      await env.DB.prepare("UPDATE users SET lat = ?1, lon = ?2, loc_ts = ?3, loc_src = 'ip' WHERE id = ?4")
+        .bind(Math.round(ilat * 100) / 100, Math.round(ilon * 100) / 100, now, acc.id).run();
+      return json({ ok: true, loc: true });
     }
     const lat = Number(b.lat), lon = Number(b.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return json({ error: "Ubicación no válida" }, 400);
     /* se redondea a 2 decimales (≈1 km): precisa para saber la zona, pero no la casa */
     const rl = Math.round(lat * 100) / 100, ro = Math.round(lon * 100) / 100;
-    await env.DB.prepare("UPDATE users SET lat = ?1, lon = ?2, loc_ts = ?3 WHERE id = ?4").bind(rl, ro, now, acc.id).run();
+    await env.DB.prepare("UPDATE users SET lat = ?1, lon = ?2, loc_ts = ?3, loc_src = 'device' WHERE id = ?4").bind(rl, ro, now, acc.id).run();
     return json({ ok: true, loc: true });
   }
   if (path === "/account/delete") {

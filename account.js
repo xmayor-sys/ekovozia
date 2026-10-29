@@ -102,14 +102,22 @@
     if (f) f.focus();
   }
 
+  /* Pide la ubicación al dispositivo. Como se guarda redondeada a ~1 km, no hace falta GPS: vale la de Wi-Fi.
+     done(ok, codigoDeError)  (1 = permiso denegado, 2 = no disponible, 3 = tiempo agotado, 0 = no compatible) */
   function askLocation(done) {
-    if (!navigator.geolocation) { done(false); return; }
+    if (!navigator.geolocation) { done(false, 0); return; }
     navigator.geolocation.getCurrentPosition(function (p) {
       api("/account/location", { token: acc.token, lat: p.coords.latitude, lon: p.coords.longitude }).then(function (r) {
         if (r.ok) { acc.loc = true; write(); }
-        done(!!r.ok);
+        done(!!r.ok, r.ok ? 0 : 2);
       });
-    }, function () { done(false); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 600000 });
+    }, function (e) { done(false, e && e.code ? e.code : 2); }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
+  }
+  function locError(code) {
+    if (code === 1) return "El navegador tiene bloqueada la ubicación para esta web (mira el candado de la barra de direcciones).";
+    if (code === 3) return "Se agotó el tiempo esperando la ubicación del dispositivo.";
+    if (code === 0) return "Tu navegador no permite obtener la ubicación.";
+    return "Este dispositivo no puede calcular su ubicación (puede que no tenga GPS ni servicio de ubicación activo).";
   }
 
   function viewForm(box, mode) {
@@ -222,7 +230,23 @@
       if (acc.loc) {
         api("/account/location", { token: acc.token, clear: true }).then(function (r) { if (expired(r)) return; acc.loc = false; write(); viewAccount(box); });
       } else {
-        askLocation(function (ok) { if (!ok) { loc.disabled = false; note(m2, "No pude obtener tu ubicación (¿has dado permiso al navegador?)."); } else viewAccount(box); });
+        askLocation(function (ok, code) {
+          if (ok) { viewAccount(box); return; }
+          loc.disabled = false;
+          note(m2, locError(code));
+          if (!r2.querySelector(".ipbtn")) {
+            var ib = el("button", "ipbtn", "Usar la ciudad aproximada de mi conexión"); ib.type = "button";
+            ib.addEventListener("click", function () {
+              ib.disabled = true;
+              api("/account/location", { token: acc.token, ip: true }).then(function (r) {
+                if (expired(r)) return;
+                if (!r.ok) { ib.disabled = false; note(m2, r.d.error || "No se pudo guardar."); return; }
+                acc.loc = true; write(); viewAccount(box);
+              });
+            });
+            r2.appendChild(ib);
+          }
+        });
       }
     });
     r2.appendChild(loc);
